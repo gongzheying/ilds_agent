@@ -55,8 +55,7 @@ public class TransferSite extends BaseEntity {
     @Column(name = "trigger_required")
     private boolean triggerRequired;
 
-
-    @Column(name = "dispatcher")
-    private String dispatcher;
+    @Enumerated
+    private TransferSiteDispatcher dispatcher;
 
 }

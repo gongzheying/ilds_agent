@@ -3,6 +3,7 @@ package org.iata.ilds.agent.activemq;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jms.connection.JmsTransactionManager;
 import org.springframework.jndi.JndiObjectFactoryBean;
 
 import javax.jms.ConnectionFactory;
@@ -31,6 +32,11 @@ public class ActivemqConfig {
         jndiObjectFactoryBean.setResourceRef(true);
         jndiObjectFactoryBean.setProxyInterface(ConnectionFactory.class);
         return jndiObjectFactoryBean;
+    }
+
+    @Bean
+    public JmsTransactionManager jmsTransactionManager(ConnectionFactory connectionFactory) {
+        return new JmsTransactionManager(connectionFactory);
     }
 
 }

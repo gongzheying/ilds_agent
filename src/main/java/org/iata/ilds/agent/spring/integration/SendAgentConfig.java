@@ -1,5 +1,6 @@
 package org.iata.ilds.agent.spring.integration;
 
+import com.jcraft.jsch.ChannelSftp;
 import lombok.extern.log4j.Log4j2;
 import org.iata.ilds.agent.activemq.ActivemqConfigProperties;
 import org.iata.ilds.agent.domain.entity.TransferPackage;
@@ -9,73 +10,49 @@ import org.iata.ilds.agent.domain.message.outbound.OutboundDispatchMessage;
 import org.iata.ilds.agent.domain.message.outbound.RoutingFileInfo;
 import org.iata.ilds.agent.spring.data.TransferPackageRepository;
 import org.iata.ilds.agent.spring.data.TransferSiteRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.annotation.*;
 import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.core.MessageSource;
+import org.springframework.integration.file.remote.session.DelegatingSessionFactory;
 import org.springframework.integration.handler.MessageProcessor;
 import org.springframework.integration.handler.ServiceActivatingHandler;
 import org.springframework.integration.jms.JmsDestinationPollingSource;
 import org.springframework.integration.json.JsonToObjectTransformer;
 import org.springframework.integration.router.AbstractMappingMessageRouter;
 import org.springframework.integration.router.AbstractMessageRouter;
-import org.springframework.integration.scheduling.PollerMetadata;
-import org.springframework.integration.transaction.TransactionHandleMessageAdvice;
-import org.springframework.integration.transaction.TransactionInterceptorBuilder;
 import org.springframework.integration.transformer.HeaderEnricher;
 import org.springframework.integration.transformer.support.HeaderValueMessageProcessor;
 import org.springframework.integration.transformer.support.MessageProcessingHeaderValueMessageProcessor;
-import org.springframework.integration.transformer.support.StaticHeaderValueMessageProcessor;
-import org.springframework.jms.connection.JmsTransactionManager;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.handler.annotation.Header;
-import org.springframework.scheduling.support.CronTrigger;
-import org.springframework.transaction.annotation.Isolation;
-import org.springframework.transaction.annotation.Propagation;
 
 import javax.jms.ConnectionFactory;
-import java.util.*;
-
-import static java.lang.String.format;
+import java.util.List;
+import java.util.Map;
 
 
 @Log4j2
 @Configuration
 public class SendAgentConfig {
-
-
-    @Bean
-    public JmsTransactionManager jmsTransactionManager(ConnectionFactory connectionFactory) {
-        return new JmsTransactionManager(connectionFactory);
-    }
-
-    @Bean
-    public TransactionHandleMessageAdvice jmsTransactionInterceptor(JmsTransactionManager jmsTransactionManager) {
-        return (TransactionHandleMessageAdvice) new TransactionInterceptorBuilder(true)
-                .transactionManager(jmsTransactionManager)
-                .isolation(Isolation.READ_COMMITTED)
-                .propagation(Propagation.REQUIRES_NEW)
-                .build();
-    }
+//
+//
+//    @Bean
+//    public TransactionHandleMessageAdvice jmsTransactionInterceptor(JmsTransactionManager jmsTransactionManager) {
+//        return (TransactionHandleMessageAdvice) new TransactionInterceptorBuilder(true)
+//                .transactionManager(jmsTransactionManager)
+//                .isolation(Isolation.READ_COMMITTED)
+//                .propagation(Propagation.REQUIRES_NEW)
+//                .build();
+//    }
+//
 
     @Bean
-    public PollerMetadata jmsQueuePoller(TransactionHandleMessageAdvice jmsTransactionInterceptor) {
-        PollerMetadata pollerMetadata = new PollerMetadata();
-        pollerMetadata.setTrigger(new CronTrigger("0 0/1 * * * *"));
-        pollerMetadata.setMaxMessagesPerPoll(10L);
-
-        /*If you want the entire flow to be transactional, you must use a transactional poller with a JmsTransactionManager. */
-        pollerMetadata.setAdviceChain(List.of(jmsTransactionInterceptor));
-
-        return pollerMetadata;
+    public DelegatingSessionFactory<ChannelSftp.LsEntry> delegatingSessionFactory(TransferSiteSessionFactoryLocator transferSiteSessionFactoryLocator) {
+        return new DelegatingSessionFactory<>(transferSiteSessionFactoryLocator);
     }
-
-
-
 
     @Bean
     public MessageChannel pollJmsQueueForOutbound() {
@@ -106,7 +83,7 @@ public class SendAgentConfig {
 
 
     @Bean
-    @InboundChannelAdapter(value = "pollJmsQueueForOutbound", poller = @Poller("jmsQueuePoller"))
+    @InboundChannelAdapter(value = "pollJmsQueueForOutbound", poller = @Poller(cron = "0 0/1 * * * *", maxMessagesPerPoll = "10"))
     public MessageSource<Object> pollJmsQueueForOutboundInboundChannelAdapter(ConnectionFactory connectionFactory, ActivemqConfigProperties config) {
         JmsDestinationPollingSource source = new JmsDestinationPollingSource(new JmsTemplate(connectionFactory));
 
