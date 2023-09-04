@@ -83,7 +83,19 @@ CREATE TABLE `tbl_ilds_pgp_encryption_key` (
 ) ENGINE=InnoDB;
 
 
-ALTER TABLE `tbl_ilds_transfer_site` ADD `dispatcher_password` varchar(255) NULL;
-ALTER TABLE `tbl_ilds_transfer_site` ADD `dispatcher_key_name` varchar(255) NULL;
-ALTER TABLE `tbl_ilds_transfer_site` ADD `dispatcher_key_passphrase` varchar(255) NULL;
+CREATE TABLE `tbl_ilds_transfer_credentials` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT NULL,
+  `last_modified_at` datetime DEFAULT NULL,
+  `version` bigint(20) NOT NULL,
+  `private_key_name` varchar(255) DEFAULT NULL,
+  `private_key_passphrase` varchar(255) DEFAULT NULL,
+  `password` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB;
+
+ALTER TABLE `tbl_ilds_transfer_site` ADD `credential_id` BIGINT DEFAULT  NULL;
+ALTER TABLE `tbl_ilds_transfer_site` ADD CONSTRAINT `tbl_ilds_transfer_site_FK` FOREIGN KEY (`credential_id`) REFERENCES `tbl_ilds_transfer_credentials`(`id`);
+
+
 

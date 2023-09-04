@@ -3,6 +3,7 @@ package org.iata.ilds.agent.spring.integration;
 import com.jcraft.jsch.ChannelSftp;
 import lombok.extern.log4j.Log4j2;
 import org.iata.ilds.agent.domain.entity.TransferSite;
+import org.iata.ilds.agent.domain.entity.TransferSiteCredentialType;
 import org.iata.ilds.agent.spring.data.TransferSiteRepository;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.integration.file.remote.session.SessionFactory;
@@ -32,7 +33,11 @@ public class TransferSiteSessionFactoryLocator implements SessionFactoryLocator<
     private DefaultSftpSessionFactory generateSessionFactory(Object key){
         TransferSite transferSite = null;
         if (transferSite == null) {
-            log.warn("Cannot find a TransferSite by key {}", key);
+            log.error("Cannot find a TransferSite by key \"{}\"", key);
+            return null;
+        }
+        if (transferSite.getCredential() == null) {
+            log.error("No login credentials are set for the TransferSite \"{}\"", transferSite.getId());
             return null;
         }
 
@@ -40,9 +45,17 @@ public class TransferSiteSessionFactoryLocator implements SessionFactoryLocator<
         sftpSessionFactory.setHost(transferSite.getIp());
         sftpSessionFactory.setPort(transferSite.getPort());
         sftpSessionFactory.setUser(transferSite.getUsername());
-        sftpSessionFactory.setPassword(transferSite.getDispatcher().getDispatcherPassword());
-        sftpSessionFactory.setPrivateKey(new FileSystemResource(transferSite.getDispatcher().getDispatcherKeyName()));
-        sftpSessionFactory.setPrivateKeyPassphrase(transferSite.getDispatcher().getDispatcherKeyPassphrase());
+
+        if (TransferSiteCredentialType.PasswordOnly.equals(transferSite.getCredentialType())) {
+            sftpSessionFactory.setPassword(transferSite.getCredential().getPassword());
+        } else if (TransferSiteCredentialType.SSHKeyOnly.equals(transferSite.getCredentialType()) ){
+            sftpSessionFactory.setPrivateKey(new FileSystemResource(transferSite.getCredential().getPrivateKeyName()));
+        }
+        else if (TransferSiteCredentialType.PasswordAndSSHKey.equals(transferSite.getCredentialType())) {
+            sftpSessionFactory.setPrivateKey(new FileSystemResource(transferSite.getCredential().getPrivateKeyName()));
+            sftpSessionFactory.setPrivateKeyPassphrase(transferSite.getCredential().getPrivateKeyPassphrase());
+        }
+
         return sftpSessionFactory;
     }
 
