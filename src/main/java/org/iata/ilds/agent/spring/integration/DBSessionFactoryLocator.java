@@ -10,18 +10,20 @@ import org.springframework.integration.file.remote.session.SessionFactory;
 import org.springframework.integration.file.remote.session.SessionFactoryLocator;
 import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
 import org.springframework.stereotype.Component;
+import org.wildfly.security.auth.realm.AggregateSecurityRealm;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Log4j2
 @Component
-public class TransferSiteSessionFactoryLocator implements SessionFactoryLocator<ChannelSftp.LsEntry> {
+public class DBSessionFactoryLocator implements SessionFactoryLocator<ChannelSftp.LsEntry> {
 
     private final Map<Object, DefaultSftpSessionFactory> sessionFactoryMap  = new ConcurrentHashMap<>();
     private final TransferSiteRepository transferSiteRepository;
 
-    public TransferSiteSessionFactoryLocator(TransferSiteRepository transferSiteRepository) {
+    public DBSessionFactoryLocator(TransferSiteRepository transferSiteRepository) {
         this.transferSiteRepository = transferSiteRepository;
     }
 
@@ -31,11 +33,13 @@ public class TransferSiteSessionFactoryLocator implements SessionFactoryLocator<
     }
 
     private DefaultSftpSessionFactory generateSessionFactory(Object key){
-        TransferSite transferSite = null;
-        if (transferSite == null) {
+        Optional<TransferSite> transferSiteOptional = transferSiteRepository.findById((Long)key);
+        if (transferSiteOptional.isEmpty()) {
             log.error("Cannot find a TransferSite by key \"{}\"", key);
             return null;
         }
+
+        TransferSite transferSite = transferSiteOptional.get();
         if (transferSite.getCredential() == null) {
             log.error("No login credentials are set for the TransferSite \"{}\"", transferSite.getId());
             return null;
