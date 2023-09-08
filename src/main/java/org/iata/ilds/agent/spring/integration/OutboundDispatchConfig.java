@@ -78,6 +78,7 @@ public class OutboundDispatchConfig {
                 .build();
     }
 
+    @Bean
     public IntegrationFlow handleExceptionFlow(DispatchCompletedService dispatchCompletedService) {
         return IntegrationFlows.from("handleException")
                 .routeByException(spec -> {
