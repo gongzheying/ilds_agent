@@ -6,12 +6,12 @@ import org.iata.ilds.agent.domain.message.DispatchCompletedMessage;
 @Getter
 public class OutboundDispatchException extends RuntimeException {
 
-    private DispatchCompletedMessage message;
+    private DispatchCompletedMessage dispatchCompletedMessage;
     private String fileWithErrors;
 
     public OutboundDispatchException(DispatchCompletedMessage message, String fileWithErrors, Throwable cause) {
         super(cause);
-        this.message = message;
+        this.dispatchCompletedMessage = message;
         this.fileWithErrors = fileWithErrors;
     }
 }

@@ -235,7 +235,7 @@ public class OutboundDispatchConfig {
     private MessageHandler handleOutboundDispatchException(DispatchCompletedService dispatchCompletedService) {
         return message -> {
             OutboundDispatchException exception = (OutboundDispatchException) message.getPayload();
-            dispatchCompletedService.setCompletionStatus(exception.getMessage(), exception.getFileWithErrors());
+            dispatchCompletedService.setCompletionStatus(exception.getDispatchCompletedMessage(), exception.getFileWithErrors());
         };
     }
 
