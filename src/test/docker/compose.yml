@@ -1,0 +1,43 @@
+services:
+  mysql1:
+    image: mysql:8
+    container_name: mysql1
+    # NOTE: use of "mysql_native_password" is not recommended: https://dev.mysql.com/doc/refman/8.0/en/upgrading-from-previous-series.html#upgrade-caching-sha2-password
+    # (this is just an example, not intended to be a production configuration)
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: ildsdb
+    networks:
+      backend:
+        ipv4_address: 172.18.0.2
+
+  sftp1:
+    image: atmoz/sftp
+    container_name: sftp1
+    volumes:
+      - ${HOME}/.ssh/id_rsa.pub:/home/foo/.ssh/keys/id_rsa.pub:ro
+      - ${HOME}/upload:/home/foo/upload
+    command: foo:password:1001::upload
+    networks:
+      backend:
+        ipv4_address: 172.18.0.3
+
+  sftp2:
+    image: atmoz/sftp
+    container_name: sftp2
+    volumes:
+      - ${HOME}/.ssh/id_rsa.pub:/home/foo/.ssh/keys/id_rsa.pub:ro
+      - ${HOME}/upload:/home/foo/upload
+    command: foo:password:1001::upload
+    networks:
+      backend:
+        ipv4_address: 172.18.0.4
+
+networks:
+  backend:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.18.0.0/24
