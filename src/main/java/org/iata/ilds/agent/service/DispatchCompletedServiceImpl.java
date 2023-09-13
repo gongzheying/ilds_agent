@@ -50,7 +50,8 @@ public class DispatchCompletedServiceImpl implements DispatchCompletedService {
                         .filter(file ->  Arrays.stream(fileWithErrors).anyMatch(item -> item.equals(file.getFileName())) )
                         .forEach(file -> file.setStatus(TransferStatus.Failed));
 
-
+                transferPackage.setStatus(TransferStatus.Failed);
+                //TODO:quarantine
             }
 
             transferPackageRepository.save(transferPackage);

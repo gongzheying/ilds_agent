@@ -74,6 +74,7 @@ public class OutboundDispatchConfig {
         return RetryTemplate.builder()
                 .maxAttempts(3)
                 .exponentialBackoff(1000, 2, 10000)
+                .retryOn(List.of(SftpException.class))
                 .traversingCauses()
                 .build();
     }
@@ -93,32 +94,32 @@ public class OutboundDispatchConfig {
     }
 
 
-    @Bean
-    public IntegrationFlow handleOutboundDispatchFlow(ConnectionFactory connectionFactory,
-                                                      ActivemqConfigProperties config,
-                                                      TransferPackageRepository transferPackageRepository,
-                                                      TransferSiteRepository transferSiteRepository,
-                                                      DelegatingSessionFactory<ChannelSftp.LsEntry> delegatingSessionFactory,
-                                                      RetryTemplate retryTemplate,
-                                                      FileService fileService,
-                                                      DispatchCompletedService dispatchCompletedService) {
-        return IntegrationFlows.from(
-                        Jms.inboundAdapter(connectionFactory).destination(config.getJndi().getQueueOutboundDispatch()),
-                        spec -> spec.poller(poller -> poller.cron("0 0/1 * * * *").maxMessagesPerPoll(10)))
-                .enrichHeaders(
-                        spec -> spec.errorChannel("handleException")
-                )
-                .transform(Transformers.fromJson(OutboundDispatchMessage.class))
-                .enrichHeaders(
-                        spec -> spec.headerFunction("TransferSite", headerValueOfTransferSite(transferSiteRepository))
-                                .headerFunction("TransferPackage", headerValueOfTransferPackage(transferPackageRepository))
-                )
-                .filter(filterOutboundDispatchMessage())
-                .handle(switchOutboundSessionFactory(delegatingSessionFactory))
-                .handle(dispatchOutboundDataFiles(delegatingSessionFactory, retryTemplate, fileService))
-                .handle(dispatchOutboundCompleted(dispatchCompletedService))
-                .get();
-    }
+//    @Bean
+//    public IntegrationFlow handleOutboundDispatchFlow(ConnectionFactory connectionFactory,
+//                                                      ActivemqConfigProperties config,
+//                                                      TransferPackageRepository transferPackageRepository,
+//                                                      TransferSiteRepository transferSiteRepository,
+//                                                      DelegatingSessionFactory<ChannelSftp.LsEntry> delegatingSessionFactory,
+//                                                      RetryTemplate retryTemplate,
+//                                                      FileService fileService,
+//                                                      DispatchCompletedService dispatchCompletedService) {
+//        return IntegrationFlows.from(
+//                        Jms.inboundAdapter(connectionFactory).destination(config.getJndi().getQueueOutboundDispatch()),
+//                        spec -> spec.poller(poller -> poller.cron("0 0/1 * * * *").maxMessagesPerPoll(10)))
+//                .enrichHeaders(
+//                        spec -> spec.errorChannel("handleException")
+//                )
+//                .transform(Transformers.fromJson(OutboundDispatchMessage.class))
+//                .enrichHeaders(
+//                        spec -> spec.headerFunction("TransferSite", headerValueOfTransferSite(transferSiteRepository))
+//                                .headerFunction("TransferPackage", headerValueOfTransferPackage(transferPackageRepository))
+//                )
+//                .filter(filterOutboundDispatchMessage())
+//                .handle(switchOutboundSessionFactory(delegatingSessionFactory))
+//                .handle(dispatchOutboundDataFiles(delegatingSessionFactory, retryTemplate, fileService))
+//                .handle(dispatchOutboundCompleted(dispatchCompletedService))
+//                .get();
+//    }
 
 
     private Function<Message<OutboundDispatchMessage>, TransferPackage> headerValueOfTransferPackage(TransferPackageRepository transferPackageRepository) {
