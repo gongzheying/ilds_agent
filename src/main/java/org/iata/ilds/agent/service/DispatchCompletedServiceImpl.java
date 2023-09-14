@@ -1,6 +1,7 @@
 package org.iata.ilds.agent.service;
 
 
+import org.apache.commons.io.FilenameUtils;
 import org.iata.ilds.agent.domain.entity.TransferPackage;
 import org.iata.ilds.agent.domain.entity.TransferStatus;
 import org.iata.ilds.agent.domain.message.DispatchCompletedMessage;
@@ -11,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class DispatchCompletedServiceImpl implements DispatchCompletedService {
@@ -23,7 +25,7 @@ public class DispatchCompletedServiceImpl implements DispatchCompletedService {
 
     @Override
     @Transactional
-    public void setCompletionStatus(DispatchCompletedMessage message, String... fileWithErrors) {
+    public void setCompletionStatus(DispatchCompletedMessage message) {
 
         Optional<TransferPackage> transferPackageOptional = transferPackageRepository.findByPackageName(message.getTrackingId());
         if (transferPackageOptional.isPresent()) {
@@ -41,17 +43,16 @@ public class DispatchCompletedServiceImpl implements DispatchCompletedService {
                 Optional.ofNullable(transferPackage.getTransferFiles())
                         .orElseGet(Collections::emptyList)
                         .stream()
-                        .filter(file -> message.getLocalFilePath().contains(file.getFileName()))
+                        .filter(file -> message.getLocalFilePath().stream().map(FilenameUtils::getName).toList().contains(file.getFileName()))
                         .forEach(file -> file.setStatus(TransferStatus.Sent));
 
                 Optional.ofNullable(transferPackage.getTransferFiles())
                         .orElseGet(Collections::emptyList)
                         .stream()
-                        .filter(file ->  Arrays.stream(fileWithErrors).anyMatch(item -> item.equals(file.getFileName())) )
+                        .filter(file -> message.getLocalFilePathWithErrors().stream().map(FilenameUtils::getName).toList().contains(file.getFileName()))
                         .forEach(file -> file.setStatus(TransferStatus.Failed));
 
                 transferPackage.setStatus(TransferStatus.Failed);
-                //TODO:quarantine
             }
 
             transferPackageRepository.save(transferPackage);

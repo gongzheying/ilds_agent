@@ -4,20 +4,25 @@ import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.SftpException;
 import lombok.extern.log4j.Log4j2;
 import org.iata.ilds.agent.activemq.ActivemqConfigProperties;
+import org.iata.ilds.agent.domain.builder.DispatchCompletedMessageBuilder;
+import org.iata.ilds.agent.domain.builder.QuarantineMessageBuilder;
 import org.iata.ilds.agent.domain.entity.FileType;
 import org.iata.ilds.agent.domain.entity.TransferPackage;
 import org.iata.ilds.agent.domain.entity.TransferSite;
 import org.iata.ilds.agent.domain.entity.TransferStatus;
 import org.iata.ilds.agent.domain.message.DispatchCompletedMessage;
+import org.iata.ilds.agent.domain.message.QuarantineMessage;
 import org.iata.ilds.agent.domain.message.outbound.OutboundDispatchMessage;
 import org.iata.ilds.agent.domain.message.outbound.RoutingFileInfo;
 import org.iata.ilds.agent.exception.OutboundDispatchException;
 import org.iata.ilds.agent.service.DispatchCompletedService;
 import org.iata.ilds.agent.service.FileService;
+import org.iata.ilds.agent.service.QuarantineService;
 import org.iata.ilds.agent.spring.data.TransferPackageRepository;
 import org.iata.ilds.agent.spring.data.TransferSiteRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.NestedExceptionUtils;
 import org.springframework.integration.core.GenericSelector;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
@@ -80,12 +85,14 @@ public class OutboundDispatchConfig {
     }
 
     @Bean
-    public IntegrationFlow handleExceptionFlow(DispatchCompletedService dispatchCompletedService) {
+    public IntegrationFlow handleExceptionFlow(DispatchCompletedService dispatchCompletedService,
+                                               QuarantineService quarantineService) {
         return IntegrationFlows.from("handleException")
                 .routeByException(spec -> {
                         spec.subFlowMapping(
                             OutboundDispatchException.class,
                             sf -> sf.handle(handleOutboundDispatchException(dispatchCompletedService))
+                                    .handle(quarantineForFailure(quarantineService))
                         )
                         .defaultOutputToParentFlow();
                 })
@@ -94,32 +101,31 @@ public class OutboundDispatchConfig {
     }
 
 
-//    @Bean
-//    public IntegrationFlow handleOutboundDispatchFlow(ConnectionFactory connectionFactory,
-//                                                      ActivemqConfigProperties config,
-//                                                      TransferPackageRepository transferPackageRepository,
-//                                                      TransferSiteRepository transferSiteRepository,
-//                                                      DelegatingSessionFactory<ChannelSftp.LsEntry> delegatingSessionFactory,
-//                                                      RetryTemplate retryTemplate,
-//                                                      FileService fileService,
-//                                                      DispatchCompletedService dispatchCompletedService) {
-//        return IntegrationFlows.from(
-//                        Jms.inboundAdapter(connectionFactory).destination(config.getJndi().getQueueOutboundDispatch()),
-//                        spec -> spec.poller(poller -> poller.cron("0 0/1 * * * *").maxMessagesPerPoll(10)))
-//                .enrichHeaders(
-//                        spec -> spec.errorChannel("handleException")
-//                )
-//                .transform(Transformers.fromJson(OutboundDispatchMessage.class))
-//                .enrichHeaders(
-//                        spec -> spec.headerFunction("TransferSite", headerValueOfTransferSite(transferSiteRepository))
-//                                .headerFunction("TransferPackage", headerValueOfTransferPackage(transferPackageRepository))
-//                )
-//                .filter(filterOutboundDispatchMessage())
-//                .handle(switchOutboundSessionFactory(delegatingSessionFactory))
-//                .handle(dispatchOutboundDataFiles(delegatingSessionFactory, retryTemplate, fileService))
-//                .handle(dispatchOutboundCompleted(dispatchCompletedService))
-//                .get();
-//    }
+    @Bean
+    public IntegrationFlow handleOutboundDispatchFlow(ConnectionFactory connectionFactory,
+                                                      ActivemqConfigProperties config,
+                                                      TransferPackageRepository transferPackageRepository,
+                                                      TransferSiteRepository transferSiteRepository,
+                                                      DelegatingSessionFactory<ChannelSftp.LsEntry> delegatingSessionFactory,
+                                                      RetryTemplate retryTemplate,
+                                                      FileService fileService,
+                                                      DispatchCompletedService dispatchCompletedService) {
+        return IntegrationFlows.from(
+                        Jms.inboundAdapter(connectionFactory).destination(config.getJndi().getQueueOutboundDispatch()),
+                        spec -> spec.poller(poller -> poller.cron("0 0/1 * * * *").maxMessagesPerPoll(10)))
+                .enrichHeaders(
+                        spec -> spec.errorChannel("handleException")
+                )
+                .transform(Transformers.fromJson(OutboundDispatchMessage.class))
+                .enrichHeaders(
+                        spec -> spec.headerFunction("TransferSite", headerValueOfTransferSite(transferSiteRepository))
+                                .headerFunction("TransferPackage", headerValueOfTransferPackage(transferPackageRepository))
+                )
+                .filter(filterOutboundDispatchMessage())
+                .handle(dispatchOutboundDataFiles(delegatingSessionFactory, retryTemplate, fileService))
+                .handle(dispatchOutboundCompleted(dispatchCompletedService))
+                .get();
+    }
 
 
     private Function<Message<OutboundDispatchMessage>, TransferPackage> headerValueOfTransferPackage(TransferPackageRepository transferPackageRepository) {
@@ -167,13 +173,6 @@ public class OutboundDispatchConfig {
         };
     }
 
-    private MessageHandler switchOutboundSessionFactory(DelegatingSessionFactory<ChannelSftp.LsEntry> delegatingSessionFactory) {
-        return message -> {
-            TransferSite transferSite = message.getHeaders().get("TransferSite", TransferSite.class);
-            delegatingSessionFactory.setThreadKey(transferSite.getId());
-        };
-    }
-
     private GenericHandler<OutboundDispatchMessage> dispatchOutboundDataFiles(DelegatingSessionFactory<ChannelSftp.LsEntry> delegatingSessionFactory,
                                                                               RetryTemplate retryTemplate,
                                                                               FileService fileService) {
@@ -189,24 +188,26 @@ public class OutboundDispatchConfig {
 
 
             TransferSite transferSite = headers.get("TransferSite", TransferSite.class);
+            delegatingSessionFactory.setThreadKey(transferSite.getId());
 
             SftpRemoteFileTemplate remoteFileTemplate = new SftpRemoteFileTemplate(delegatingSessionFactory);
             return remoteFileTemplate.executeWithClient((ClientCallback<ChannelSftp, DispatchCompletedMessage>) client -> {
-                DispatchCompletedMessage completedMessage = new DispatchCompletedMessage();
-                completedMessage.setTrackingId(payload.getTrackingId());
-                completedMessage.setProcessingStartTime(payload.getProcessingStartTime());
+
+                DispatchCompletedMessageBuilder completedMessageBuilder = DispatchCompletedMessageBuilder
+                        .dispatchCompletedMessage(payload.getTrackingId())
+                        .processingStartTime(payload.getProcessingStartTime());
 
                 Stream.concat(dataFileGroupWithoutTDF, dataFileGroupWithTDF).forEach(file -> {
                     try {
                         String fileSentOut = dispatchDataFile(file, transferSite.getRemotePath(), retryTemplate, client);
-                        completedMessage.getLocalFilePath().add(fileSentOut);
+                        completedMessageBuilder.addCompletedDataFile(fileSentOut);
                     } catch (SftpException e) {
-                        throw new OutboundDispatchException(completedMessage, file.getName(), e);
+                        completedMessageBuilder.addFailedDataFile(file.getAbsolutePath());
+                        throw new OutboundDispatchException(completedMessageBuilder.build(),  e);
                     }
                 });
 
-                completedMessage.setSuccessful(true);
-                return completedMessage;
+                return completedMessageBuilder.build();
             });
         };
     }
@@ -236,10 +237,21 @@ public class OutboundDispatchConfig {
     private MessageHandler handleOutboundDispatchException(DispatchCompletedService dispatchCompletedService) {
         return message -> {
             OutboundDispatchException exception = (OutboundDispatchException) message.getPayload();
-            dispatchCompletedService.setCompletionStatus(exception.getDispatchCompletedMessage(), exception.getFileWithErrors());
+            dispatchCompletedService.setCompletionStatus(exception.getDispatchCompletedMessage());
         };
     }
 
+    private MessageHandler quarantineForFailure(QuarantineService quarantineService) {
+        return message -> {
+            OutboundDispatchException exception = (OutboundDispatchException) message.getPayload();
 
+            //TODO: callingProcessStatusId ?
+            QuarantineMessage quarantineMessage = QuarantineMessageBuilder.quarantineMessage(exception.getDispatchCompletedMessage())
+                    .callingProcessStatusId(1)
+                    .errorDescriptionOfParentProcess(NestedExceptionUtils.getMostSpecificCause(exception).getMessage())
+                    .build();
+            quarantineService.quarantineForFailure(quarantineMessage);
+        };
+    }
 
 }

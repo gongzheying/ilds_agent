@@ -7,7 +7,10 @@
     "successful",
     "processingStartTime",
     "trackingId",
-    "localFilePath"
+    "localFilePath",
+    "localFilePathWithErrors",
+    "sender",
+    "destination"
   ],
   "properties": {
     "successful": {
@@ -37,31 +40,58 @@
       "title": "local file paths",
       "items": {
         "type": "string",
-        "title": "A local file path"
+        "title": "local file path"
       },
       "examples": [
-        ["/tmp/tmp2001043976030232494/20230906145243805_25a2ecf0122b445992271c7360476c10_O/a.txt",
+        [
+          "/tmp/tmp2001043976030232494/20230906145243805_25a2ecf0122b445992271c7360476c10_O/a.txt",
           "/tmp/tmp2001043976030232494/20230906145243805_25a2ecf0122b445992271c7360476c10_O/b.txt"
         ]
       ]
+    },
+    "localFilePathWithErrors": {
+      "type": "array",
+      "default": [],
+      "title": "local file path with errors",
+      "items": {
+        "type": "string",
+        "title": "local file path with error"
+      },
+      "examples": [
+        [
+          "/tmp/tmp2001043976030232494/20230906145243805_25a2ecf0122b445992271c7360476c10_O/c.txt"
+        ]
+      ]
+    },
+    "sender": {
+      "type": "string",
+      "title": "sender",
+      "examples": [
+        "isis"
+      ]
+    },
+    "destination": {
+      "type": "string",
+      "title": "destination",
+      "examples": [
+        "N/A"
+      ]
     }
-  }
-},
-  "examples": [{
-    "successful": true,
-    "processingStartTime": 1693983163713,
-    "trackingId": "20230906145244546_c3ec6a43c98b491db4d77ea3dd39fcf3_I",
-    "localFilePath": [
-    "/tmp/tmp2001043976030232494/20230906145244546_c3ec6a43c98b491db4d77ea3dd39fcf3_I/a.txt",
-    "/tmp/tmp2001043976030232494/20230906145244546_c3ec6a43c98b491db4d77ea3dd39fcf3_I/b.txt"
-    ]
-  },{
-    "successful": true,
-    "processingStartTime": 1693983163713,
-    "trackingId": "20230906145243805_25a2ecf0122b445992271c7360476c10_O",
-    "localFilePath": [
-    "/tmp/tmp2001043976030232494/20230906145243805_25a2ecf0122b445992271c7360476c10_O/a.txt",
-    "/tmp/tmp2001043976030232494/20230906145243805_25a2ecf0122b445992271c7360476c10_O/b.txt"
-    ]
-  }]
+  },
+  "examples": [
+    {
+      "successful": true,
+      "processingStartTime": 1693983163713,
+      "trackingId": "20230906145243805_25a2ecf0122b445992271c7360476c10_O",
+      "localFilePath": [
+        "/tmp/tmp2001043976030232494/20230906145243805_25a2ecf0122b445992271c7360476c10_O/a.txt",
+        "/tmp/tmp2001043976030232494/20230906145243805_25a2ecf0122b445992271c7360476c10_O/b.txt"
+      ],
+      "localFilePathWithErrors": [
+        "/tmp/tmp2001043976030232494/20230906145243805_25a2ecf0122b445992271c7360476c10_O/c.txt"
+      ],
+      "sender": "isis",
+      "destination": "N/A"
+    }
+  ]
 }
