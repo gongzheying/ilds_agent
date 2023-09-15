@@ -2,6 +2,10 @@ package org.iata.ilds.agent.domain.builder;
 
 import org.iata.ilds.agent.domain.message.DispatchCompletedMessage;
 import org.iata.ilds.agent.domain.message.QuarantineMessage;
+import org.iata.ilds.agent.domain.message.eventlog.CallingProcess;
+import org.iata.ilds.agent.domain.message.eventlog.CallingProcessStatus;
+import org.iata.ilds.agent.domain.message.eventlog.LogType;
+import org.iata.ilds.agent.util.FileTrackingUtils;
 
 public final class QuarantineMessageBuilder {
 
@@ -17,12 +21,11 @@ public final class QuarantineMessageBuilder {
         instance.quarantineMessage.setTrackingId(dispatchCompletedMessage.getTrackingId());
         instance.quarantineMessage.setProcessingStartTime(dispatchCompletedMessage.getProcessingStartTime());
 
-        return instance;
-    }
+        boolean isInbound = FileTrackingUtils.isInboundDirection(dispatchCompletedMessage.getTrackingId());
+        CallingProcess callingProcess = isInbound ? CallingProcess.INBOUND_DISPATCH : CallingProcess.OUTBOUND_DISPATCH;
+        instance.quarantineMessage.setCallingProcessStatusId(CallingProcessStatus.getId(LogType.Failed, callingProcess));
 
-    public QuarantineMessageBuilder callingProcessStatusId(int callingProcessStatusId) {
-        this.quarantineMessage.setCallingProcessStatusId(callingProcessStatusId);
-        return this;
+        return instance;
     }
 
     public QuarantineMessageBuilder errorDescriptionOfParentProcess(String errorDescriptionOfParentProcess) {

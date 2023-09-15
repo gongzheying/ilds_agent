@@ -245,9 +245,7 @@ public class OutboundDispatchConfig {
         return message -> {
             OutboundDispatchException exception = (OutboundDispatchException) message.getPayload();
 
-            //TODO: callingProcessStatusId ?
             QuarantineMessage quarantineMessage = QuarantineMessageBuilder.quarantineMessage(exception.getDispatchCompletedMessage())
-                    .callingProcessStatusId(1)
                     .errorDescriptionOfParentProcess(NestedExceptionUtils.getMostSpecificCause(exception).getMessage())
                     .build();
             quarantineService.quarantineForFailure(quarantineMessage);

@@ -1,12 +1,11 @@
 package org.iata.ilds.agent.domain.builder;
 
 import org.iata.ilds.agent.domain.message.DispatchCompletedMessage;
+import org.iata.ilds.agent.util.FileTrackingUtils;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public final class DispatchCompletedMessageBuilder {
@@ -14,10 +13,6 @@ public final class DispatchCompletedMessageBuilder {
     static final String N_A = "N/A";
     static final String HOSTING = "hosting";
 
-
-    static final String TRACKING_ID_PATTERN = "^((\\d{17})_[\\d|a-f]{32}_(I|O))(_\\d+)?$";
-    static final char INBOUND_DIRECTION_SYMBOL = 'I';
-    static final char OUTBOUND_DIRECTION_SYMBOL = 'O';
 
     private DispatchCompletedMessage dispatchCompletedMessage;
 
@@ -47,9 +42,7 @@ public final class DispatchCompletedMessageBuilder {
 
     public DispatchCompletedMessage build() {
 
-        Matcher matcher = Pattern.compile(TRACKING_ID_PATTERN).matcher(dispatchCompletedMessage.getTrackingId());
-
-        boolean isInbound = matcher.group(3).charAt(0) == INBOUND_DIRECTION_SYMBOL;
+        boolean isInbound = FileTrackingUtils.isInboundDirection(dispatchCompletedMessage.getTrackingId());
         dispatchCompletedMessage.setSender(isInbound ? N_A : HOSTING);
 
         //getGrandParentName
