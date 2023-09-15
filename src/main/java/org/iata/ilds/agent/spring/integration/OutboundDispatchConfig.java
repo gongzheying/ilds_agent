@@ -222,7 +222,7 @@ public class OutboundDispatchConfig {
     private String dispatchDataFile(File file, String remotePath, RetryTemplate retryTemplate, ChannelSftp client) throws SftpException {
         return retryTemplate.execute(context -> {
             client.put(file.getAbsolutePath(), String.format("%s/%s", remotePath, file.getName()));
-            return file.getName();
+            return file.getAbsolutePath();
         });
     }
 
