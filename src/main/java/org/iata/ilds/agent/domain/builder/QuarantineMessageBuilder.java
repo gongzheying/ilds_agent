@@ -14,14 +14,21 @@ public final class QuarantineMessageBuilder {
         quarantineMessage = new QuarantineMessage();
     }
 
-    public static QuarantineMessageBuilder quarantineMessage(DispatchCompletedMessage dispatchCompletedMessage) {
+    public static QuarantineMessageBuilder quarantineMessage(DispatchCompletedMessage message) {
         QuarantineMessageBuilder instance = new QuarantineMessageBuilder();
 
+        instance.quarantineMessage.setTrackingId(message.getTrackingId());
+        instance.quarantineMessage.setProcessingStartTime(message.getProcessingStartTime());
 
-        instance.quarantineMessage.setTrackingId(dispatchCompletedMessage.getTrackingId());
-        instance.quarantineMessage.setProcessingStartTime(dispatchCompletedMessage.getProcessingStartTime());
+        instance.quarantineMessage.setLocalFilePath(message.getLocalFilePath());
+        instance.quarantineMessage.setOriginalFileName(message.getOriginalFileName());
+        instance.quarantineMessage.setOriginalFilePath(message.getOriginalFilePath());
+        instance.quarantineMessage.setOriginalFileSize(message.getOriginalFileSize());
+        instance.quarantineMessage.setSender(message.getSender());
+        instance.quarantineMessage.setDestination(message.getDestination());
+        instance.quarantineMessage.setBsp(message.getBsp());
 
-        boolean isInbound = FileTrackingUtils.isInboundDirection(dispatchCompletedMessage.getTrackingId());
+        boolean isInbound = FileTrackingUtils.isInboundDirection(message.getTrackingId());
         CallingProcess callingProcess = isInbound ? CallingProcess.INBOUND_DISPATCH : CallingProcess.OUTBOUND_DISPATCH;
         instance.quarantineMessage.setCallingProcessStatusId(CallingProcessStatus.getId(LogType.Failed, callingProcess));
 

@@ -1,386 +1,134 @@
 {
   "$schema": "https://json-schema.org/draft/2019-09/schema",
-  "$id": "http://localhost/OutboundDispatchMessage.json",
-  "title": "OutboundDispatchMessage Schema",
   "type": "object",
-  "required": [
-    "routingFileInfo",
-    "triggerRequired",
-    "processingStartTime",
-    "trackingId",
-    "localFilePath",
-    "originalFileName",
-    "originalFileSize",
-    "sender",
-    "destination",
-    "originalFilePath",
-    "transferProtocol",
-    "bsp"
-  ],
+  "extends" : {
+    "$ref" : "../ProcessingTimeMessage.json"
+  },
   "properties": {
     "routingFileInfo": {
-      "title": "RoutingFileInfo Schema",
       "type": "object",
-      "required": [
-        "sender",
-        "isoCountryCode",
-        "isPassThrough",
-        "channel",
-        "needSignature",
-        "compression",
-        "encryption"
-      ],
       "properties": {
-        "sender": {
-          "title": "sender",
-          "type": "string",
-          "examples": [
-            "ISIS2"
-          ]
-        },
-        "isoCountryCode": {
-          "title": "iso country code",
-          "type": "string",
-          "examples": [
-            "CN"
-          ]
-        },
-        "isPassThrough": {
-          "title": "isPassThrough",
-          "type": "boolean",
-          "examples": [
-            false
-          ]
-        },
         "channel": {
-          "title": "Channel Schema",
           "type": "object",
-          "required": [
-            "name",
-            "address"
-          ],
           "properties": {
-            "name": {
-              "title": "name",
-              "type": "string",
-              "examples": [
-                "BSPLINK"
-              ]
-            },
             "address": {
-              "title": "Address Schema",
               "type": "object",
-              "required": [
-                "protocol",
-                "ip",
-                "port",
-                "path",
-                "user"
-              ],
               "properties": {
-                "protocol": {
-                  "title": "protocol",
-                  "type": "string",
-                  "examples": [
-                    "SFTP"
-                  ]
-                },
                 "ip": {
-                  "title": "ip",
-                  "type": "string",
-                  "examples": [
-                    "10.1.15.151"
-                  ]
+                  "type": "string"
                 },
-                "port": {
-                  "title": "port",
-                  "type": "integer",
-                  "examples": [
-                    22
-                  ]
+                "keyName": {
+                  "type": "string"
+                },
+                "password": {
+                  "type": "string"
                 },
                 "path": {
-                  "title": "path",
-                  "type": "string",
-                  "examples": [
-                    "/test/dir/"
-                  ]
+                  "type": "string"
+                },
+                "port": {
+                  "type": "integer"
+                },
+                "protocol": {
+                  "type": "string"
                 },
                 "user": {
-                  "title": "user",
-                  "type": "string",
-                  "examples": [
-                    "nbs"
-                  ]
+                  "type": "string"
                 }
-              },
-              "examples": [
-                {
-                  "protocol": "SFTP",
-                  "ip": "10.1.15.151",
-                  "port": 22,
-                  "path": "/test/dir/",
-                  "user": "nbs"
-                }
-              ]
-            }
-          },
-          "examples": [
-            {
-              "name": "BSPLINK",
-              "address": {
-                "protocol": "SFTP",
-                "ip": "10.1.15.151",
-                "port": 22,
-                "path": "/test/dir/",
-                "user": "nbs"
               }
-            }
-          ]
-        },
-        "needSignature": {
-          "title": "need signature",
-          "type": "boolean",
-          "examples": [
-            true
-          ]
-        },
-        "compression": {
-          "title": "Compression Schema",
-          "type": "object",
-          "required": [
-            "compressionType",
-            "name",
-            "needPassword",
-            "password"
-          ],
-          "properties": {
-            "compressionType": {
-              "title": "compression type",
-              "type": "string",
-              "examples": [
-                "ZIP"
-              ]
             },
             "name": {
-              "title": "name",
-              "type": "string",
-              "examples": [
-                "B"
-              ]
+              "type": "string"
+            }
+          }
+        },
+        "compression": {
+          "type": "object",
+          "properties": {
+            "compressionType": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
             },
             "needPassword": {
-              "title": "need password",
-              "type": "boolean",
-              "examples": [
-                true
-              ]
+              "type": "boolean"
             },
             "password": {
-              "title": "password",
-              "type": "string",
-              "examples": [
-                "This is a password"
-              ]
+              "type": "string"
             }
-          },
-          "examples": [
-            {
-              "compressionType": "ZIP",
-              "name": "B",
-              "needPassword": true,
-              "password": "This is a password"
-            }
-          ]
+          }
+        },
+        "critical": {
+          "type": "string"
         },
         "encryption": {
-          "title": "Encryption Schema",
           "type": "object",
-          "required": [
-            "encryptionType",
-            "keyName",
-            "suffix"
-          ],
           "properties": {
             "encryptionType": {
-              "title": "encryption type",
-              "type": "string",
-              "examples": [
-                "PGP"
-              ]
+              "type": "string"
             },
             "keyName": {
-              "title": "key name",
-              "type": "string",
-              "examples": [
-                "key1"
-              ]
+              "type": "string"
             },
             "suffix": {
-              "title": "suffix",
-              "type": "string",
-              "examples": [
-                ".pgp"
-              ]
+              "type": "string"
             }
-          },
-          "examples": [
-            {
-              "encryptionType": "PGP",
-              "keyName": "key1",
-              "suffix": ".pgp"
-            }
-          ]
-        }
-      },
-      "examples": [
-        {
-          "sender": "ISIS2",
-          "isoCountryCode": "CN",
-          "isPassThrough": false,
-          "channel": {
-            "name": "BSPLINK",
-            "address": {
-              "protocol": "SFTP",
-              "ip": "10.1.15.151",
-              "port": 22,
-              "path": "/test/dir/",
-              "user": "nbs"
-            }
-          },
-          "needSignature": true,
-          "compression": {
-            "compressionType": "ZIP",
-            "name": "B",
-            "needPassword": true,
-            "password": "This is a password"
-          },
-          "encryption": {
-            "encryptionType": "PGP",
-            "keyName": "key1",
-            "suffix": ".pgp"
           }
+        },
+        "fpaccc": {
+          "type": "string"
+        },
+        "gdprMasking": {
+          "type": "object",
+          "properties": {
+            "dobr": {
+              "type": "string"
+            },
+            "enrs": {
+              "type": "string"
+            },
+            "ffrf": {
+              "type": "string"
+            },
+            "pxda": {
+              "type": "string"
+            },
+            "pxnm": {
+              "type": "string"
+            }
+          }
+        },
+        "hotAddendum": {
+          "type": "object",
+          "properties": {
+            "generate": {
+              "type": "string"
+            },
+            "nDigitsList": {
+              "type": "string"
+            }
+          }
+        },
+        "isoCountryCode": {
+          "type": "string"
+        },
+        "needSignature": {
+          "type": "boolean"
+        },
+        "outputCategory": {
+          "type": "string"
+        },
+        "sender": {
+          "type": "string"
+        },
+        "tokenType": {
+          "type": "string"
         }
-      ]
+      }
     },
     "triggerRequired": {
-      "title": "trigger required",
-      "type": "boolean",
-      "examples": [
-        false
-      ]
-    },
-    "processingStartTime": {
-      "title": "processing start time",
-      "type": "integer",
-      "examples": [
-        1692862943672
-      ]
-    },
-    "trackingId": {
-      "title": "tracking id",
-      "type": "string",
-      "examples": [
-        "20230824154223707_70b57aa77787431988cc09aeaf113aa2_O"
-      ]
-    },
-    "localFilePath": {
-      "title": "local file path",
-      "type": "string",
-      "examples": [
-        "/tmp/tmp1509547147656999106/20230824154223707_70b57aa77787431988cc09aeaf113aa2_O"
-      ]
-    },
-    "originalFileName": {
-      "title": "original file name",
-      "type": "string",
-      "examples": [
-        "a.txt"
-      ]
-    },
-    "originalFileSize": {
-      "title": "original file size",
-      "type": "integer",
-      "examples": [
-        0
-      ]
-    },
-    "sender": {
-      "title": "sender",
-      "type": "string",
-      "examples": [
-        "isis"
-      ]
-    },
-    "destination": {
-      "title": "destination",
-      "type": "string",
-      "examples": [
-        "N/A"
-      ]
-    },
-    "originalFilePath": {
-      "title": "original file path",
-      "type": "string",
-      "examples": [
-        "thirdparty/inbox/a.txt"
-      ]
-    },
-    "transferProtocol": {
-      "title": "transfer protocol",
-      "type": "string",
-      "examples": [
-        "sftp"
-      ]
-    },
-    "bsp": {
-      "title": "bsp",
-      "type": "string",
-      "examples": [
-        "CN"
-      ]
+      "type": "boolean"
     }
-  },
-  "examples": [
-    {
-      "routingFileInfo": {
-        "sender": "ISIS2",
-        "isoCountryCode": "CN",
-        "isPassThrough": false,
-        "channel": {
-          "name": "BSPLINK",
-          "address": {
-            "protocol": "SFTP",
-            "ip": "10.1.15.151",
-            "port": 22,
-            "path": "/test/dir/",
-            "user": "nbs"
-          }
-        },
-        "needSignature": true,
-        "compression": {
-          "compressionType": "ZIP",
-          "name": "B",
-          "needPassword": true,
-          "password": "This is a password"
-        },
-        "encryption": {
-          "encryptionType": "PGP",
-          "keyName": "key1",
-          "suffix": ".pgp"
-        }
-      },
-      "triggerRequired": false,
-      "processingStartTime": 1692862943672,
-      "trackingId": "20230824154223707_70b57aa77787431988cc09aeaf113aa2_O",
-      "localFilePath": "/tmp/tmp1509547147656999106/20230824154223707_70b57aa77787431988cc09aeaf113aa2_O",
-      "originalFileName": "a.txt",
-      "originalFileSize": 0,
-      "sender": "isis",
-      "destination": "N/A",
-      "originalFilePath": "thirdparty/inbox/a.txt",
-      "transferProtocol": "sftp",
-      "bsp": "CN"
-    }
-  ]
+  }
 }

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "type": "object",
+  "properties": {
+    "bsp": {
+      "type": "string"
+    },
+    "destination": {
+      "type": "string"
+    },
+    "localFilePath": {
+      "type": "string"
+    },
+    "originalFileName": {
+      "type": "string"
+    },
+    "originalFilePath": {
+      "type": "string"
+    },
+    "originalFileSize": {
+      "type": "integer"
+    },
+    "sender": {
+      "type": "string"
+    },
+    "trackingId": {
+      "type": "string"
+    },
+    "transferProtocol": {
+      "type": "string"
+    }
+  }
+}

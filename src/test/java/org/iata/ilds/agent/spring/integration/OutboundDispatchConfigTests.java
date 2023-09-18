@@ -32,9 +32,9 @@ public class OutboundDispatchConfigTests {
         dispatchCompletedMessage.setTrackingId("1");
         dispatchCompletedMessage.setSuccessful(false);
         dispatchCompletedMessage.setLocalFilePath(List.of("file1.txt", "file2.txt"));
-        String fileWithErrors = "wrong_file.txt";
+        dispatchCompletedMessage.setLocalFilePathWithErrors(List.of("wrong_file.txt"));
         RuntimeException customException = new RuntimeException("Custom Error!");
-        OutboundDispatchException e = new OutboundDispatchException(dispatchCompletedMessage, fileWithErrors, customException);
+        OutboundDispatchException e = new OutboundDispatchException(dispatchCompletedMessage, customException);
         handleException.send(MessageBuilder.withPayload(e).build());
 
         Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->

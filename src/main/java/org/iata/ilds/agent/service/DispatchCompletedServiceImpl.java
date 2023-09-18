@@ -43,13 +43,13 @@ public class DispatchCompletedServiceImpl implements DispatchCompletedService {
                 Optional.ofNullable(transferPackage.getTransferFiles())
                         .orElseGet(Collections::emptyList)
                         .stream()
-                        .filter(file -> message.getLocalFilePath().stream().map(FilenameUtils::getName).toList().contains(file.getFileName()))
+                        .filter(file -> message.getProcessedLocalFilePaths().stream().map(FilenameUtils::getName).toList().contains(file.getFileName()))
                         .forEach(file -> file.setStatus(TransferStatus.Sent));
 
                 Optional.ofNullable(transferPackage.getTransferFiles())
                         .orElseGet(Collections::emptyList)
                         .stream()
-                        .filter(file -> message.getLocalFilePathWithErrors().stream().map(FilenameUtils::getName).toList().contains(file.getFileName()))
+                        .filter(file -> FilenameUtils.getName(message.getLocalFilePath()).equals(file.getFileName()))
                         .forEach(file -> file.setStatus(TransferStatus.Failed));
 
                 transferPackage.setStatus(TransferStatus.Failed);

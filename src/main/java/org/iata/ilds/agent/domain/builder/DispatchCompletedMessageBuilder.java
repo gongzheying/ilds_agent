@@ -1,12 +1,11 @@
 package org.iata.ilds.agent.domain.builder;
 
 import org.iata.ilds.agent.domain.message.DispatchCompletedMessage;
+import org.iata.ilds.agent.domain.message.outbound.OutboundDispatchMessage;
 import org.iata.ilds.agent.util.FileTrackingUtils;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Optional;
-import java.util.stream.Stream;
 
 public final class DispatchCompletedMessageBuilder {
 
@@ -20,24 +19,32 @@ public final class DispatchCompletedMessageBuilder {
         dispatchCompletedMessage = new DispatchCompletedMessage();
     }
 
-    public static DispatchCompletedMessageBuilder dispatchCompletedMessage(String trackingId) {
+
+    public static DispatchCompletedMessageBuilder dispatchCompletedMessage(OutboundDispatchMessage message) {
         DispatchCompletedMessageBuilder instance = new DispatchCompletedMessageBuilder();
-        instance.dispatchCompletedMessage.setTrackingId(trackingId);
+        instance.dispatchCompletedMessage.setTrackingId(message.getTrackingId());
+        instance.dispatchCompletedMessage.setProcessingStartTime(message.getProcessingStartTime());
+
+        instance.dispatchCompletedMessage.setLocalFilePath(message.getLocalFilePath());
+        instance.dispatchCompletedMessage.setOriginalFileName(message.getOriginalFileName());
+        instance.dispatchCompletedMessage.setOriginalFilePath(message.getOriginalFilePath());
+        instance.dispatchCompletedMessage.setOriginalFileSize(message.getOriginalFileSize());
+//        instance.dispatchCompletedMessage.setSender(message.getSender());
+//        instance.dispatchCompletedMessage.setDestination(message.getDestination());
+        instance.dispatchCompletedMessage.setBsp(message.getBsp());
+
+        instance.dispatchCompletedMessage.setSuccessful(true);
         return instance;
     }
 
 
-    public DispatchCompletedMessageBuilder processingStartTime(int processingStartTime) {
-        dispatchCompletedMessage.setProcessingStartTime(processingStartTime);
-        return this;
-    }
-
-    public void addCompletedDataFile(String dataFilePath) {
-        dispatchCompletedMessage.getLocalFilePath().add(dataFilePath);
+    public void addProcessedDataFile(String dataFilePath) {
+        dispatchCompletedMessage.getProcessedLocalFilePaths().add(dataFilePath);
     }
 
     public void addFailedDataFile(String dataFilePath) {
-        dispatchCompletedMessage.getLocalFilePathWithErrors().add(dataFilePath);
+        dispatchCompletedMessage.setLocalFilePath(dataFilePath);
+        dispatchCompletedMessage.setSuccessful(false);
     }
 
     public DispatchCompletedMessage build() {
@@ -46,13 +53,8 @@ public final class DispatchCompletedMessageBuilder {
         dispatchCompletedMessage.setSender(isInbound ? N_A : HOSTING);
 
         //getGrandParentName
-        Optional<String> dataFilePathOptional = Stream.concat(
-                dispatchCompletedMessage.getLocalFilePath().stream(),
-                dispatchCompletedMessage.getLocalFilePathWithErrors().stream()).findFirst();
-        Path dataFilePath = Paths.get(dataFilePathOptional.get());
+        Path dataFilePath = Paths.get(dispatchCompletedMessage.getProcessedLocalFilePaths().stream().findFirst().orElse(dispatchCompletedMessage.getLocalFilePath()));
         dispatchCompletedMessage.setDestination(isInbound ? HOSTING : dataFilePath.getName(dataFilePath.getNameCount() - 3).toString());
-
-        dispatchCompletedMessage.setSuccessful(dispatchCompletedMessage.getLocalFilePathWithErrors().isEmpty());
 
         return dispatchCompletedMessage;
     }

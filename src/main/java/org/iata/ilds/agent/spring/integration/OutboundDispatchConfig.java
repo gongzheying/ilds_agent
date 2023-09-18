@@ -193,14 +193,12 @@ public class OutboundDispatchConfig {
             SftpRemoteFileTemplate remoteFileTemplate = new SftpRemoteFileTemplate(delegatingSessionFactory);
             return remoteFileTemplate.executeWithClient((ClientCallback<ChannelSftp, DispatchCompletedMessage>) client -> {
 
-                DispatchCompletedMessageBuilder completedMessageBuilder = DispatchCompletedMessageBuilder
-                        .dispatchCompletedMessage(payload.getTrackingId())
-                        .processingStartTime(payload.getProcessingStartTime());
+                DispatchCompletedMessageBuilder completedMessageBuilder = DispatchCompletedMessageBuilder.dispatchCompletedMessage(payload);
 
                 Stream.concat(dataFileGroupWithoutTDF, dataFileGroupWithTDF).forEach(file -> {
                     try {
                         String fileSentOut = dispatchDataFile(file, transferSite.getRemotePath(), retryTemplate, client);
-                        completedMessageBuilder.addCompletedDataFile(fileSentOut);
+                        completedMessageBuilder.addProcessedDataFile(fileSentOut);
                     } catch (SftpException e) {
                         completedMessageBuilder.addFailedDataFile(file.getAbsolutePath());
                         throw new OutboundDispatchException(completedMessageBuilder.build(),  e);

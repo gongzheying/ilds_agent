@@ -1,136 +1,22 @@
 {
   "$schema": "https://json-schema.org/draft/2019-09/schema",
-  "$id": "http://localhost/QuarantineMessage.json",
   "type": "object",
-  "title": "QuarantineMessage Schema",
-  "required": [
-    "errorDescriptionOfParentProcess",
-    "callingProcessStatusId",
-    "processingStartTime",
-    "trackingId",
-    "localFilePath",
-    "originalFileName",
-    "originalFileSize",
-    "sender",
-    "destination",
-    "originalFilePath",
-    "transferProtocol",
-    "bsp"
-  ],
-  "properties": {
-    "errorDescriptionOfParentProcess": {
-      "type": "string",
-      "title": "error description",
-      "examples": [
-        "Outbound system error"
-      ]
-    },
-    "callingProcessStatusId": {
-      "type": "integer",
-      "title": "calling process StatusId Schema",
-      "examples": [
-        253
-      ]
-    },
-    "processingStartTime": {
-      "type": "integer",
-      "title": "processing start time",
-      "examples": [
-        1693464241925
-      ]
-    },
-    "trackingId": {
-      "type": "string",
-      "title": "trackingId",
-      "examples": [
-        "20230831144401981_3398784a74244c65a07f265a81a8cfd9_O"
-      ]
-    },
-    "localFilePath": {
-      "type": "string",
-      "title": "local file path",
-      "examples": [
-        "/tmp/tmp5493954300606059841/20230831144401981_3398784a74244c65a07f265a81a8cfd9_O"
-      ]
-    },
-    "originalFileName": {
-      "type": "string",
-      "title": "original file name",
-      "examples": [
-        "a.txt"
-      ]
-    },
-    "originalFileSize": {
-      "type": "integer",
-      "title": "original file size",
-      "examples": [
-        0
-      ]
-    },
-    "sender": {
-      "type": "string",
-      "title": "sender",
-      "examples": [
-        "isis"
-      ]
-    },
-    "destination": {
-      "type": "string",
-      "title": "destination",
-      "examples": [
-        "N/A"
-      ]
-    },
-    "originalFilePath": {
-      "type": "string",
-      "title": "original file path",
-      "examples": [
-        "thirdparty/inbox/a.txt"
-      ]
-    },
-    "transferProtocol": {
-      "type": "string",
-      "title": "transfer protocol",
-      "examples": [
-        "sftp"
-      ]
-    },
-    "bsp": {
-      "type": "string",
-      "title": "bsp",
-      "examples": [
-        "CN"
-      ]
-    }
+  "extends" : {
+    "$ref" : "ProcessingTimeMessage.json"
   },
-  "examples": [
-    {
-      "errorDescriptionOfParentProcess": "Outbound system error",
-      "callingProcessStatusId": 253,
-      "processingStartTime": 1693464241925,
-      "trackingId": "20230831144401981_3398784a74244c65a07f265a81a8cfd9_O",
-      "localFilePath": "/tmp/tmp5493954300606059841/20230831144401981_3398784a74244c65a07f265a81a8cfd9_O",
-      "originalFileName": "a.txt",
-      "originalFileSize": 0,
-      "sender": "isis",
-      "destination": "N/A",
-      "originalFilePath": "thirdparty/inbox/a.txt",
-      "transferProtocol": "sftp",
-      "bsp": "CN"
+  "properties": {
+    "callingProcessStatusId": {
+      "type": "integer"
     },
-    {
-      "errorDescriptionOfParentProcess": "Inbound system error",
-      "callingProcessStatusId": 163,
-      "processingStartTime": 1693464241925,
-      "trackingId": "20230831144402378_a296045d3055433ca8129b15440b01b3_I",
-      "localFilePath": "/tmp/tmp1427186418309708381/20230831144402378_a296045d3055433ca8129b15440b01b3_I",
-      "originalFileName": "1.txt",
-      "originalFileSize": 0,
-      "sender": "sftp_user",
-      "destination": "isis",
-      "originalFilePath": "sftp_user/CN/1.txt",
-      "transferProtocol": "sftp",
-      "bsp": "CN"
+    "errorDescriptionOfParentProcess": {
+      "type": "string"
+    },
+    "sourceFileType": {
+      "type": "string",
+      "enum": [
+        "Folder",
+        "File"
+      ]
     }
-  ]
+  }
 }
