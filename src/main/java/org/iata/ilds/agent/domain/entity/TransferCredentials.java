@@ -13,6 +13,9 @@ import javax.persistence.Table;
 @Table(name = "tbl_ilds_transfer_credentials")
 public class TransferCredentials  extends BaseEntity {
 
+    @Column(name = "title")
+    private String title;
+
     @Column(name = "password")
     private String password;
 

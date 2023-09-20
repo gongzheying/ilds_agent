@@ -91,6 +91,7 @@ CREATE TABLE `tbl_ilds_transfer_credentials` (
   `private_key_name` varchar(255) DEFAULT NULL,
   `private_key_passphrase` varchar(255) DEFAULT NULL,
   `password` varchar(255) DEFAULT NULL,
+  `title` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB;
 

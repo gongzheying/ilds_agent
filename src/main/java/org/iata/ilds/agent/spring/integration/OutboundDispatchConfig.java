@@ -11,13 +11,11 @@ import org.iata.ilds.agent.domain.entity.TransferPackage;
 import org.iata.ilds.agent.domain.entity.TransferSite;
 import org.iata.ilds.agent.domain.entity.TransferStatus;
 import org.iata.ilds.agent.domain.message.DispatchCompletedMessage;
-import org.iata.ilds.agent.domain.message.QuarantineMessage;
 import org.iata.ilds.agent.domain.message.outbound.OutboundDispatchMessage;
 import org.iata.ilds.agent.domain.message.outbound.RoutingFileInfo;
 import org.iata.ilds.agent.exception.OutboundDispatchException;
 import org.iata.ilds.agent.service.DispatchCompletedService;
 import org.iata.ilds.agent.service.FileService;
-import org.iata.ilds.agent.service.QuarantineService;
 import org.iata.ilds.agent.spring.data.TransferPackageRepository;
 import org.iata.ilds.agent.spring.data.TransferSiteRepository;
 import org.springframework.context.annotation.Bean;
@@ -31,6 +29,7 @@ import org.springframework.integration.dsl.Transformers;
 import org.springframework.integration.file.remote.ClientCallback;
 import org.springframework.integration.file.remote.session.DelegatingSessionFactory;
 import org.springframework.integration.handler.GenericHandler;
+import org.springframework.integration.handler.advice.RequestHandlerRetryAdvice;
 import org.springframework.integration.jms.dsl.Jms;
 import org.springframework.integration.sftp.session.SftpRemoteFileTemplate;
 import org.springframework.messaging.Message;
@@ -64,7 +63,7 @@ public class OutboundDispatchConfig {
 
 
     @Bean
-    public MessageChannel handleException() {
+    public MessageChannel errorChannel() {
         return MessageChannels.publishSubscribe().get();
     }
 
@@ -78,28 +77,36 @@ public class OutboundDispatchConfig {
     public RetryTemplate retryTemplate() {
         return RetryTemplate.builder()
                 .maxAttempts(3)
-                .exponentialBackoff(1000, 2, 10000)
-                .retryOn(List.of(SftpException.class))
-                .traversingCauses()
+                .exponentialBackoff(1000, 2.0, 10*1000)
                 .build();
     }
 
     @Bean
-    public IntegrationFlow handleExceptionFlow(DispatchCompletedService dispatchCompletedService,
-                                               QuarantineService quarantineService) {
-        return IntegrationFlows.from("handleException")
+    public RequestHandlerRetryAdvice retryAdvice(RetryTemplate retryTemplate) {
+        RequestHandlerRetryAdvice retryAdvice = new RequestHandlerRetryAdvice();
+        retryAdvice.setRetryTemplate(retryTemplate);
+        return retryAdvice;
+    }
+
+    @Bean
+    public IntegrationFlow handleExceptionFlow(MessageChannel errorChannel,
+                                               ConnectionFactory connectionFactory,
+                                               ActivemqConfigProperties config,
+                                               DispatchCompletedService dispatchCompletedService,
+                                               RequestHandlerRetryAdvice retryAdvice) {
+        return IntegrationFlows.from(errorChannel)
                 .routeByException(spec -> {
                         spec.subFlowMapping(
                             OutboundDispatchException.class,
                             sf -> sf.handle(handleOutboundDispatchException(dispatchCompletedService))
-                                    .handle(quarantineForFailure(quarantineService))
+                                    .handle(Jms.outboundAdapter(connectionFactory).destination(config.getJndi().getQueueQuarantine()),
+                                            spec1 -> spec1.advice(retryAdvice))
                         )
                         .defaultOutputToParentFlow();
                 })
                 .log()
                 .get();
     }
-
 
     @Bean
     public IntegrationFlow handleOutboundDispatchFlow(ConnectionFactory connectionFactory,
@@ -113,9 +120,6 @@ public class OutboundDispatchConfig {
         return IntegrationFlows.from(
                         Jms.inboundAdapter(connectionFactory).destination(config.getJndi().getQueueOutboundDispatch()),
                         spec -> spec.poller(poller -> poller.cron("0 0/1 * * * *").maxMessagesPerPoll(10)))
-                .enrichHeaders(
-                        spec -> spec.errorChannel("handleException")
-                )
                 .transform(Transformers.fromJson(OutboundDispatchMessage.class))
                 .enrichHeaders(
                         spec -> spec.headerFunction("TransferSite", headerValueOfTransferSite(transferSiteRepository))
@@ -232,22 +236,17 @@ public class OutboundDispatchConfig {
         };
     }
 
-    private MessageHandler handleOutboundDispatchException(DispatchCompletedService dispatchCompletedService) {
-        return message -> {
-            OutboundDispatchException exception = (OutboundDispatchException) message.getPayload();
-            dispatchCompletedService.setCompletionStatus(exception.getDispatchCompletedMessage());
+    private GenericHandler<OutboundDispatchException> handleOutboundDispatchException(DispatchCompletedService dispatchCompletedService) {
+        return (payload, headers) -> {
+
+            dispatchCompletedService.setCompletionStatus(payload.getDispatchCompletedMessage());
+
+            return QuarantineMessageBuilder.quarantineMessage(payload.getDispatchCompletedMessage())
+                        .errorDescriptionOfParentProcess(NestedExceptionUtils.getMostSpecificCause(payload).getMessage())
+                        .build();
+
         };
     }
 
-    private MessageHandler quarantineForFailure(QuarantineService quarantineService) {
-        return message -> {
-            OutboundDispatchException exception = (OutboundDispatchException) message.getPayload();
-
-            QuarantineMessage quarantineMessage = QuarantineMessageBuilder.quarantineMessage(exception.getDispatchCompletedMessage())
-                    .errorDescriptionOfParentProcess(NestedExceptionUtils.getMostSpecificCause(exception).getMessage())
-                    .build();
-            quarantineService.quarantineForFailure(quarantineMessage);
-        };
-    }
 
 }
