@@ -28,6 +28,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.jms.ConnectionFactory;
 import java.io.File;
@@ -38,6 +40,7 @@ import java.util.stream.Stream;
 
 @Log4j2
 @SpringBootTest
+@ActiveProfiles(value = "test")
 public class OutboundDispatchConfigTests {
 
     @Autowired
@@ -57,13 +60,22 @@ public class OutboundDispatchConfigTests {
     private ActivemqConfigProperties config;
 
 
+    @Transactional
+    public void prepareTransferPackageForTesting(TransferPackage transferPackage) {
+
+        if (transferPackageRepository.existsById(transferPackage.getId())) {
+            transferPackageRepository.deleteById(transferPackage.getId());
+        }
+        transferPackageRepository.save(transferPackage);
+
+    }
+
 
     @ParameterizedTest
     @MethodSource
     public void testHandleExceptionFlow(TransferPackage transferPackage) {
 
-        transferPackageRepository.deleteById(transferPackage.getId());
-        transferPackageRepository.save(transferPackage);
+        prepareTransferPackageForTesting(transferPackage);
 
         DispatchCompletedMessage dispatchCompletedMessage = new DispatchCompletedMessage();
         dispatchCompletedMessage.setProcessingStartTime((int) System.currentTimeMillis());
@@ -116,8 +128,7 @@ public class OutboundDispatchConfigTests {
     @MethodSource
     public void testHandleOutboundDispatchFlow(OutboundDispatchMessage outboundDispatchMessage, TransferPackage transferPackage) {
 
-        transferPackageRepository.deleteById(transferPackage.getId());
-        transferPackageRepository.save(transferPackage);
+        prepareTransferPackageForTesting(transferPackage);
 
         try {
             JmsTemplate jmsTemplate = new JmsTemplate(connectionFactory);
@@ -126,12 +137,11 @@ public class OutboundDispatchConfigTests {
             Assertions.fail("JSON serialization failed", e);
         }
 
-        Awaitility.await().atMost(Duration.ofSeconds(60)).until(() -> {
+        Awaitility.await().atMost(Duration.ofSeconds(60)).until(() ->
+                TransferStatus.Sent.equals(
+                        transferPackageRepository.findByPackageName(transferPackage.getPackageName()).get().getStatus()
+                ));
 
-            Collection<File> uploads = FileUtils.listFiles(new File(FileUtils.getUserDirectory(), "upload"), null, null);
-            return uploads.stream().allMatch(upload -> transferPackage.getTransferFiles().stream().map(TransferFile::getFileName).anyMatch(f -> f.equals(upload.getName())));
-
-        });
     }
 
     private static Stream<Arguments> testHandleOutboundDispatchFlow() {
@@ -172,7 +182,6 @@ public class OutboundDispatchConfigTests {
         transferPackage.setLocalFilePath("target/test-files");
         for (long id =1; id<=3; id++) {
             TransferFile transferFile = new TransferFile();
-            transferFile.setId(id);
             transferFile.setFileName(String.format("file%d.%s", id, id == 3 ? "tdf" : "txt"));
             transferFile.setFileType(id == 3 ? FileType.TDF : FileType.Normal);
             transferFile.setStatus(TransferStatus.Processing);

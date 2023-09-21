@@ -34,9 +34,5 @@ public class ActivemqConfig {
         return jndiObjectFactoryBean;
     }
 
-    @Bean
-    public JmsTransactionManager jmsTransactionManager(ConnectionFactory connectionFactory) {
-        return new JmsTransactionManager(connectionFactory);
-    }
 
 }

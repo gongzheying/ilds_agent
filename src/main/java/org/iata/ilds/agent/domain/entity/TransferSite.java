@@ -32,9 +32,9 @@ public class TransferSite extends BaseEntity {
     @Column(name = "compression_password")
     private String compressionPassword;
 
+    @Enumerated
     @Column(name = "credential_type")
     private TransferSiteCredentialType credentialType;
-
 
     @Enumerated
     @Column(name = "status")
@@ -43,6 +43,7 @@ public class TransferSite extends BaseEntity {
     @Column(name = "encryption_key_name")
     private String encryptionKeyName;
 
+    @Enumerated
     @Column(name = "destination_type")
     private DestinationType destinationType;
 

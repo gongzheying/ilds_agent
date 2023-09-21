@@ -49,17 +49,6 @@ import java.util.stream.Stream;
 @Log4j2
 @Configuration
 public class OutboundDispatchConfig {
-//
-//
-//    @Bean
-//    public TransactionHandleMessageAdvice jmsTransactionInterceptor(JmsTransactionManager jmsTransactionManager) {
-//        return (TransactionHandleMessageAdvice) new TransactionInterceptorBuilder(true)
-//                .transactionManager(jmsTransactionManager)
-//                .isolation(Isolation.READ_COMMITTED)
-//                .propagation(Propagation.REQUIRES_NEW)
-//                .build();
-//    }
-//
 
 
     @Bean
@@ -99,6 +88,7 @@ public class OutboundDispatchConfig {
                         spec.subFlowMapping(
                             OutboundDispatchException.class,
                             sf -> sf.handle(handleOutboundDispatchException(dispatchCompletedService))
+                                    .transform(Transformers.toJson())
                                     .handle(Jms.outboundAdapter(connectionFactory).destination(config.getJndi().getQueueQuarantine()),
                                             spec1 -> spec1.advice(retryAdvice))
                         )
