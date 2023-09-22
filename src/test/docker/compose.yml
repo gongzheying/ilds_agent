@@ -18,7 +18,6 @@ services:
     container_name: sftp1
     volumes:
       - ${HOME}/.ssh/id_rsa.pub:/home/foo/.ssh/keys/id_rsa.pub:ro
-      - ${HOME}/upload:/home/foo/upload
     command: foo:password:1001::upload
     networks:
       backend:
@@ -29,7 +28,6 @@ services:
     container_name: sftp2
     volumes:
       - ${HOME}/.ssh/id_rsa.pub:/home/foo/.ssh/keys/id_rsa.pub:ro
-      - ${HOME}/upload:/home/foo/upload
     command: foo:password:1001::upload
     networks:
       backend:

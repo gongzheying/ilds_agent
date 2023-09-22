@@ -21,7 +21,7 @@ import org.iata.ilds.agent.spring.data.TransferSiteRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.NestedExceptionUtils;
-import org.springframework.integration.core.GenericSelector;
+import org.springframework.integration.core.MessageSelector;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
 import org.springframework.integration.dsl.MessageChannels;
@@ -113,7 +113,7 @@ public class OutboundDispatchConfig {
                 .transform(Transformers.fromJson(OutboundDispatchMessage.class))
                 .enrichHeaders(
                         spec -> spec.headerFunction("TransferSite", headerValueOfTransferSite(transferSiteRepository))
-                                .headerFunction("TransferPackage", headerValueOfTransferPackage(transferPackageRepository))
+                                    .headerFunction("TransferPackage", headerValueOfTransferPackage(transferPackageRepository))
                 )
                 .filter(filterOutboundDispatchMessage())
                 .handle(dispatchOutboundDataFiles(delegatingSessionFactory, retryTemplate, fileService))
@@ -141,22 +141,22 @@ public class OutboundDispatchConfig {
         };
     }
 
-    private GenericSelector<Message<OutboundDispatchMessage>> filterOutboundDispatchMessage() {
+    private MessageSelector filterOutboundDispatchMessage() {
         return message -> {
-            OutboundDispatchMessage outboundDispatchMessage = message.getPayload();
+            OutboundDispatchMessage payload = (OutboundDispatchMessage) message.getPayload();
             TransferPackage transferPackage = message.getHeaders().get("TransferPackage", TransferPackage.class);
             TransferSite transferSite = message.getHeaders().get("TransferSite", TransferSite.class);
 
             if (transferPackage == null) {
-                log.error("No TransferPackage \"{}\" were found in the Database.", outboundDispatchMessage.getTrackingId());
+                log.error("No TransferPackage \"{}\" were found in the Database.", payload.getTrackingId());
                 return false;
             } else if (transferPackage.getStatus() == TransferStatus.Abandoned) {
-                log.warn("The TransferPackage \"{}\" was abandoned.", outboundDispatchMessage.getTrackingId());
+                log.warn("The TransferPackage \"{}\" was abandoned.", payload.getTrackingId());
                 return false;
             }
 
             if (transferSite == null) {
-                log.error("No TransferSite \"{}\" were found in the Database.", outboundDispatchMessage.getTrackingId());
+                log.error("No TransferSite \"{}\" were found in the Database.", payload.getTrackingId());
                 return false;
             } else if (transferSite.getCredential() == null) {
                 log.error("No login credentials were set for the TransferSite \"{}\"", transferSite.getId());
@@ -213,6 +213,9 @@ public class OutboundDispatchConfig {
 
     private String dispatchDataFile(File file, String remotePath, RetryTemplate retryTemplate, ChannelSftp client) throws SftpException {
         return retryTemplate.execute(context -> {
+
+            log.info("put {} to {}", file.getAbsolutePath(), String.format("%s/%s", remotePath, file.getName()));
+
             client.put(file.getAbsolutePath(), String.format("%s/%s", remotePath, file.getName()));
             return file.getAbsolutePath();
         });
@@ -221,8 +224,8 @@ public class OutboundDispatchConfig {
 
     private MessageHandler dispatchOutboundCompleted(DispatchCompletedService dispatchCompletedService) {
         return message -> {
-            DispatchCompletedMessage dispatchCompletedMessage = (DispatchCompletedMessage) message.getPayload();
-            dispatchCompletedService.setCompletionStatus(dispatchCompletedMessage);
+            DispatchCompletedMessage payload = (DispatchCompletedMessage) message.getPayload();
+            dispatchCompletedService.setCompletionStatus(payload);
         };
     }
 

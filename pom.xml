@@ -108,7 +108,6 @@
                     <includeHashcodeAndEquals>false</includeHashcodeAndEquals>
                     <customDateTimePattern>yyyy-MM-dd'T'HH:mm:ss.SSS</customDateTimePattern>
                     <usePrimitives>true</usePrimitives>
-                    <generateBuilders>true</generateBuilders>
                 </configuration>
                 <executions>
                     <execution>

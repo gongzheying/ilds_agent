@@ -46,6 +46,7 @@ public class DBSessionFactoryLocator implements SessionFactoryLocator<ChannelSft
         }
 
         DefaultSftpSessionFactory sftpSessionFactory = new DefaultSftpSessionFactory();
+        sftpSessionFactory.setAllowUnknownKeys(true);
         sftpSessionFactory.setHost(transferSite.getIp());
         sftpSessionFactory.setPort(transferSite.getPort());
         sftpSessionFactory.setUser(transferSite.getUsername());

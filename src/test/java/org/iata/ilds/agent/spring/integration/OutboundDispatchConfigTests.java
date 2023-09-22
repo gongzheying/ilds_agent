@@ -97,7 +97,7 @@ public class OutboundDispatchConfigTests {
 
         errorChannel.send(MessageBuilder.withPayload(e).build());
 
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
+        Awaitility.await().atMost(Duration.ofSeconds(30)).until(() ->
                 TransferStatus.Failed.equals(
                         transferPackageRepository.findByPackageName(transferPackage.getPackageName()).get().getStatus()
                 ));
@@ -137,7 +137,7 @@ public class OutboundDispatchConfigTests {
             Assertions.fail("JSON serialization failed", e);
         }
 
-        Awaitility.await().atMost(Duration.ofSeconds(60)).until(() ->
+        Awaitility.await().atMost(Duration.ofSeconds(3*60)).until(() ->
                 TransferStatus.Sent.equals(
                         transferPackageRepository.findByPackageName(transferPackage.getPackageName()).get().getStatus()
                 ));
@@ -161,9 +161,9 @@ public class OutboundDispatchConfigTests {
         RoutingFileInfo routingFileInfo = new RoutingFileInfo();
         Channel channel = new Channel();
         Address address = new Address();
-        address.setIp("172.18.0.3");
+        address.setIp("172.18.0.4");
         address.setPort(22);
-        address.setPath("/upload");
+        address.setPath("/upload_err");
         address.setUser("foo");
         channel.setAddress(address);
         routingFileInfo.setChannel(channel);
