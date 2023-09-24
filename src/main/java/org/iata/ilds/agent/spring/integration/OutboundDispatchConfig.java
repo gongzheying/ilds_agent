@@ -20,11 +20,9 @@ import org.iata.ilds.agent.spring.data.TransferPackageRepository;
 import org.iata.ilds.agent.spring.data.TransferSiteRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.NestedExceptionUtils;
 import org.springframework.integration.core.MessageSelector;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
-import org.springframework.integration.dsl.MessageChannels;
 import org.springframework.integration.dsl.Transformers;
 import org.springframework.integration.file.remote.ClientCallback;
 import org.springframework.integration.file.remote.session.DelegatingSessionFactory;
@@ -33,8 +31,8 @@ import org.springframework.integration.handler.advice.RequestHandlerRetryAdvice;
 import org.springframework.integration.jms.dsl.Jms;
 import org.springframework.integration.sftp.session.SftpRemoteFileTemplate;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
+import org.springframework.messaging.MessageHandlingException;
 import org.springframework.retry.support.RetryTemplate;
 
 import javax.jms.ConnectionFactory;
@@ -52,68 +50,42 @@ public class OutboundDispatchConfig {
 
 
     @Bean
-    public MessageChannel errorChannel() {
-        return MessageChannels.publishSubscribe().get();
-    }
-
-
-    @Bean
     public DelegatingSessionFactory<ChannelSftp.LsEntry> delegatingSessionFactory(DBSessionFactoryLocator dBSessionFactoryLocator) {
         return new DelegatingSessionFactory<>(dBSessionFactoryLocator);
     }
 
-    @Bean
-    public RetryTemplate retryTemplate() {
-        return RetryTemplate.builder()
-                .maxAttempts(3)
-                .exponentialBackoff(1000, 2.0, 10*1000)
-                .build();
-    }
 
     @Bean
-    public RequestHandlerRetryAdvice retryAdvice(RetryTemplate retryTemplate) {
-        RequestHandlerRetryAdvice retryAdvice = new RequestHandlerRetryAdvice();
-        retryAdvice.setRetryTemplate(retryTemplate);
-        return retryAdvice;
-    }
-
-    @Bean
-    public IntegrationFlow handleExceptionFlow(MessageChannel errorChannel,
-                                               ConnectionFactory connectionFactory,
-                                               ActivemqConfigProperties config,
-                                               DispatchCompletedService dispatchCompletedService,
-                                               RequestHandlerRetryAdvice retryAdvice) {
-        return IntegrationFlows.from(errorChannel)
-                .routeByException(spec -> {
-                        spec.subFlowMapping(
-                            OutboundDispatchException.class,
-                            sf -> sf.handle(handleOutboundDispatchException(dispatchCompletedService))
-                                    .transform(Transformers.toJson())
-                                    .handle(Jms.outboundAdapter(connectionFactory).destination(config.getJndi().getQueueQuarantine()),
-                                            spec1 -> spec1.advice(retryAdvice))
-                        )
-                        .defaultOutputToParentFlow();
-                })
+    public IntegrationFlow outboundDispatchExceptionFlow(ConnectionFactory connectionFactory,
+                                                         ActivemqConfigProperties config,
+                                                         DispatchCompletedService dispatchCompletedService,
+                                                         RequestHandlerRetryAdvice retryAdvice) {
+        return IntegrationFlows.from("outboundDispatchExceptionChannel")
                 .log()
+                .handle(handleOutboundDispatchException(dispatchCompletedService))
+                .transform(Transformers.toJson())
+                .handle(Jms.outboundAdapter(connectionFactory).destination(config.getJndi().getQueueQuarantine()),
+                        spec1 -> spec1.advice(retryAdvice))
                 .get();
     }
 
+
     @Bean
-    public IntegrationFlow handleOutboundDispatchFlow(ConnectionFactory connectionFactory,
-                                                      ActivemqConfigProperties config,
-                                                      TransferPackageRepository transferPackageRepository,
-                                                      TransferSiteRepository transferSiteRepository,
-                                                      DelegatingSessionFactory<ChannelSftp.LsEntry> delegatingSessionFactory,
-                                                      RetryTemplate retryTemplate,
-                                                      FileService fileService,
-                                                      DispatchCompletedService dispatchCompletedService) {
+    public IntegrationFlow outboundDispatchFlow(ConnectionFactory connectionFactory,
+                                                ActivemqConfigProperties config,
+                                                TransferPackageRepository transferPackageRepository,
+                                                TransferSiteRepository transferSiteRepository,
+                                                DelegatingSessionFactory<ChannelSftp.LsEntry> delegatingSessionFactory,
+                                                RetryTemplate retryTemplate,
+                                                FileService fileService,
+                                                DispatchCompletedService dispatchCompletedService) {
         return IntegrationFlows.from(
                         Jms.inboundAdapter(connectionFactory).destination(config.getJndi().getQueueOutboundDispatch()),
                         spec -> spec.poller(poller -> poller.cron("0 0/1 * * * *").maxMessagesPerPoll(10)))
                 .transform(Transformers.fromJson(OutboundDispatchMessage.class))
                 .enrichHeaders(
                         spec -> spec.headerFunction("TransferSite", headerValueOfTransferSite(transferSiteRepository))
-                                    .headerFunction("TransferPackage", headerValueOfTransferPackage(transferPackageRepository))
+                                .headerFunction("TransferPackage", headerValueOfTransferPackage(transferPackageRepository))
                 )
                 .filter(filterOutboundDispatchMessage())
                 .handle(dispatchOutboundDataFiles(delegatingSessionFactory, retryTemplate, fileService))
@@ -195,7 +167,7 @@ public class OutboundDispatchConfig {
                         completedMessageBuilder.addProcessedDataFile(fileSentOut);
                     } catch (SftpException e) {
                         completedMessageBuilder.addFailedDataFile(file.getAbsolutePath());
-                        throw new OutboundDispatchException(completedMessageBuilder.build(),  e);
+                        throw new OutboundDispatchException(e.getMessage(), completedMessageBuilder.build());
                     }
                 });
 
@@ -214,7 +186,7 @@ public class OutboundDispatchConfig {
     private String dispatchDataFile(File file, String remotePath, RetryTemplate retryTemplate, ChannelSftp client) throws SftpException {
         return retryTemplate.execute(context -> {
 
-            log.info("put {} to {}", file.getAbsolutePath(), String.format("%s/%s", remotePath, file.getName()));
+            log.debug("put {} to {}", file.getAbsolutePath(), String.format("%s/%s", remotePath, file.getName()));
 
             client.put(file.getAbsolutePath(), String.format("%s/%s", remotePath, file.getName()));
             return file.getAbsolutePath();
@@ -229,14 +201,16 @@ public class OutboundDispatchConfig {
         };
     }
 
-    private GenericHandler<OutboundDispatchException> handleOutboundDispatchException(DispatchCompletedService dispatchCompletedService) {
+    private GenericHandler<MessageHandlingException> handleOutboundDispatchException(DispatchCompletedService dispatchCompletedService) {
         return (payload, headers) -> {
 
-            dispatchCompletedService.setCompletionStatus(payload.getDispatchCompletedMessage());
+            OutboundDispatchException rootCause  = (OutboundDispatchException) payload.getMostSpecificCause();
 
-            return QuarantineMessageBuilder.quarantineMessage(payload.getDispatchCompletedMessage())
-                        .errorDescriptionOfParentProcess(NestedExceptionUtils.getMostSpecificCause(payload).getMessage())
-                        .build();
+            dispatchCompletedService.setCompletionStatus(rootCause.getDispatchCompletedMessage());
+
+            return QuarantineMessageBuilder.quarantineMessage(rootCause.getDispatchCompletedMessage())
+                    .errorDescriptionOfParentProcess(rootCause.getMessage())
+                    .build();
 
         };
     }

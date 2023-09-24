@@ -19,10 +19,10 @@ public class FileServiceImpl implements FileService {
     @Getter
     public enum TRANSFER_FILE_EXTENSION {
 
-        ROUTING(".orf"),
-        TDF(".tdf"),
-        HOTADD(".hotadd"),
-        BINLIST(".csv");
+        ROUTING("orf"),
+        TDF("tdf"),
+        HOTADD("hotadd"),
+        BINLIST("csv");
         private String extension;
         TRANSFER_FILE_EXTENSION(String extension) {
             this.extension = extension;

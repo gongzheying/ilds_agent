@@ -73,7 +73,7 @@ public class OutboundDispatchConfigTests {
 
     @ParameterizedTest
     @MethodSource
-    public void testHandleExceptionFlow(TransferPackage transferPackage) {
+    public void testOutboundDispatchExceptionFlow(TransferPackage transferPackage) {
 
         prepareTransferPackageForTesting(transferPackage);
 
@@ -92,8 +92,7 @@ public class OutboundDispatchConfigTests {
                 .map(TransferFile::getFileName)
                 .findFirst().orElse(null));
 
-        RuntimeException customException = new RuntimeException("Custom Error!");
-        OutboundDispatchException e = new OutboundDispatchException(dispatchCompletedMessage, customException);
+        OutboundDispatchException e = new OutboundDispatchException("Custom Error!", dispatchCompletedMessage);
 
         errorChannel.send(MessageBuilder.withPayload(e).build());
 
@@ -104,29 +103,16 @@ public class OutboundDispatchConfigTests {
 
     }
 
-    private static Stream<TransferPackage> testHandleExceptionFlow() {
+    private static Stream<TransferPackage> testOutboundDispatchExceptionFlow() {
 
         return Stream.of(createTransferPackage());
 
     }
 
 
-
-    @Test
-    public void testHandleExceptionFlowWithRuntimeException() {
-        RuntimeException customException = new RuntimeException("Custom Error!");
-        errorChannel.send(MessageBuilder.withPayload(customException).build());
-
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> {
-            log.info("There should be an ErrorMessage appearing on the console");
-            return true;
-        });
-
-    }
-
     @ParameterizedTest
     @MethodSource
-    public void testHandleOutboundDispatchFlow(OutboundDispatchMessage outboundDispatchMessage, TransferPackage transferPackage) {
+    public void testOutboundDispatchFlow(OutboundDispatchMessage outboundDispatchMessage, TransferPackage transferPackage) {
 
         prepareTransferPackageForTesting(transferPackage);
 
@@ -137,14 +123,14 @@ public class OutboundDispatchConfigTests {
             Assertions.fail("JSON serialization failed", e);
         }
 
-        Awaitility.await().atMost(Duration.ofSeconds(3*60)).until(() ->
+        Awaitility.await().atMost(Duration.ofSeconds(3 * 60)).until(() ->
                 TransferStatus.Sent.equals(
                         transferPackageRepository.findByPackageName(transferPackage.getPackageName()).get().getStatus()
                 ));
 
     }
 
-    private static Stream<Arguments> testHandleOutboundDispatchFlow() {
+    private static Stream<Arguments> testOutboundDispatchFlow() {
 
         TransferPackage transferPackage = createTransferPackage();
         OutboundDispatchMessage dispatchMessage = createOutboundDispatchMessage(transferPackage);
@@ -180,7 +166,7 @@ public class OutboundDispatchConfigTests {
         transferPackage.setTransferFiles(new ArrayList<>());
         transferPackage.setStatus(TransferStatus.Processing);
         transferPackage.setLocalFilePath("target/test-files");
-        for (long id =1; id<=3; id++) {
+        for (long id = 1; id <= 3; id++) {
             TransferFile transferFile = new TransferFile();
             transferFile.setFileName(String.format("file%d.%s", id, id == 3 ? "tdf" : "txt"));
             transferFile.setFileType(id == 3 ? FileType.TDF : FileType.Normal);

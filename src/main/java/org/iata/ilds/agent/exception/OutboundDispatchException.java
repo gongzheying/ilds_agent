@@ -8,8 +8,8 @@ public class OutboundDispatchException extends RuntimeException {
 
     private DispatchCompletedMessage dispatchCompletedMessage;
 
-    public OutboundDispatchException(DispatchCompletedMessage message, Throwable cause) {
-        super(cause);
-        this.dispatchCompletedMessage = message;
+    public OutboundDispatchException(String errorMessage, DispatchCompletedMessage completeMessage) {
+        super(errorMessage);
+        this.dispatchCompletedMessage = completeMessage;
     }
 }
