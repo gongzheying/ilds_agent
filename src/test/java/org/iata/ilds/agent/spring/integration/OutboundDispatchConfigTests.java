@@ -27,7 +27,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.jms.core.JmsTemplate;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.MessageHandlingException;
+import org.springframework.messaging.support.ErrorMessage;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -92,9 +95,12 @@ public class OutboundDispatchConfigTests {
                 .map(TransferFile::getFileName)
                 .findFirst().orElse(null));
 
-        OutboundDispatchException e = new OutboundDispatchException("Custom Error!", dispatchCompletedMessage);
 
-        errorChannel.send(MessageBuilder.withPayload(e).build());
+
+        Message<DispatchCompletedMessage> message = MessageBuilder.withPayload(dispatchCompletedMessage).build();
+        MessageHandlingException e = new MessageHandlingException(message,new OutboundDispatchException("Custom Error!", dispatchCompletedMessage));
+
+        errorChannel.send(new ErrorMessage(e, message));
 
         Awaitility.await().atMost(Duration.ofSeconds(30)).until(() ->
                 TransferStatus.Failed.equals(
@@ -112,7 +118,9 @@ public class OutboundDispatchConfigTests {
 
     @ParameterizedTest
     @MethodSource
-    public void testOutboundDispatchFlow(OutboundDispatchMessage outboundDispatchMessage, TransferPackage transferPackage) {
+    public void testOutboundDispatchFlow(TransferStatus expectedStatus,
+                                         OutboundDispatchMessage outboundDispatchMessage,
+                                         TransferPackage transferPackage) {
 
         prepareTransferPackageForTesting(transferPackage);
 
@@ -124,7 +132,7 @@ public class OutboundDispatchConfigTests {
         }
 
         Awaitility.await().atMost(Duration.ofSeconds(3 * 60)).until(() ->
-                TransferStatus.Sent.equals(
+                expectedStatus.equals(
                         transferPackageRepository.findByPackageName(transferPackage.getPackageName()).get().getStatus()
                 ));
 
@@ -134,11 +142,39 @@ public class OutboundDispatchConfigTests {
 
         TransferPackage transferPackage = createTransferPackage();
         OutboundDispatchMessage dispatchMessage = createOutboundDispatchMessage(transferPackage);
-        return Stream.of(Arguments.of(dispatchMessage, transferPackage));
+
+        TransferPackage transferPackage2 = createTransferPackage();
+        OutboundDispatchMessage dispatchMessage2 = createWrongOutboundDispatchMessage(transferPackage2);
+
+        return Stream.of(
+                Arguments.of(TransferStatus.Sent, dispatchMessage, transferPackage),
+                Arguments.of(TransferStatus.Failed, dispatchMessage2, transferPackage2)
+        );
 
     }
 
+
     private static OutboundDispatchMessage createOutboundDispatchMessage(TransferPackage transferPackage) {
+        OutboundDispatchMessage dispatchMessage = new OutboundDispatchMessage();
+        dispatchMessage.setProcessingStartTime((int) System.currentTimeMillis());
+        dispatchMessage.setTrackingId(transferPackage.getPackageName());
+        dispatchMessage.setLocalFilePath(transferPackage.getLocalFilePath());
+
+        RoutingFileInfo routingFileInfo = new RoutingFileInfo();
+        Channel channel = new Channel();
+        Address address = new Address();
+        address.setIp("172.18.0.3");
+        address.setPort(22);
+        address.setPath("/upload");
+        address.setUser("foo");
+        channel.setAddress(address);
+        routingFileInfo.setChannel(channel);
+
+        dispatchMessage.setRoutingFileInfo(routingFileInfo);
+        return dispatchMessage;
+    }
+
+    private static OutboundDispatchMessage createWrongOutboundDispatchMessage(TransferPackage transferPackage) {
         OutboundDispatchMessage dispatchMessage = new OutboundDispatchMessage();
         dispatchMessage.setProcessingStartTime((int) System.currentTimeMillis());
         dispatchMessage.setTrackingId(transferPackage.getPackageName());
