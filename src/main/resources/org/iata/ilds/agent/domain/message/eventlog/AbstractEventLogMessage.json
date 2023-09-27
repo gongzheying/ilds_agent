@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "type": "object",
+  "properties": {
+    "bsp": {
+      "type": "string"
+    },
+    "callingProcess": {
+      "type": "string",
+      "enum": [
+        "PROBLEM_RESOLUTION_BACKUP",
+        "PROBLEM_RESOLUTION_QUARANTINE",
+        "INBOUND_RECEIPT",
+        "INBOUND_BACKUP",
+        "INBOUND_VERIFICATION",
+        "INBOUND_SUBSTITUTION",
+        "INBOUND_DISPATCH_PREPARATION",
+        "INBOUND_DISPATCH",
+        "OUTBOUND_RECEIPT",
+        "OUTBOUND_VERIFICATION",
+        "OUTBOUND_RESTORATION",
+        "OUTBOUND_DISPATCH_PREPARATION",
+        "OUTBOUND_DISPATCH",
+        "QUARANTINE",
+        "INBOUND_BACKUP_DELETION",
+        "OFFLINE_SCANNING",
+        "ONLINE_TRANSACTION",
+        "ONLINE_FILE",
+        "ONLINE_FILE_OUTBOUND"
+      ]
+    },
+    "callingProcessStatusId": {
+      "type": "integer",
+      "format": "int32"
+    },
+    "className": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "eventSeverity": {
+      "type": "string",
+      "enum": [
+        "Info",
+        "Warning",
+        "Error",
+        "Critical"
+      ]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "trackingId": {
+      "type": "string"
+    }
+  }
+}

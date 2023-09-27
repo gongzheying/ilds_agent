@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "type": "object",
+  "extends": {
+    "$ref": "AbstractEventLogMessage.json"
+  },
+  "properties": {
+    "destination": {
+      "type": "string"
+    },
+    "inboundFolder": {
+      "type": "string"
+    },
+    "originalPackageName": {
+      "type": "string"
+    },
+    "originalPackageSize": {
+      "type": "integer"
+    },
+    "sender": {
+      "type": "string"
+    },
+    "transferMethod": {
+      "type": "string"
+    }
+  }
+}
