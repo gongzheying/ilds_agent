@@ -108,6 +108,10 @@
                     <includeHashcodeAndEquals>false</includeHashcodeAndEquals>
                     <customDateTimePattern>yyyy-MM-dd'T'HH:mm:ss.SSS</customDateTimePattern>
                     <usePrimitives>true</usePrimitives>
+                    <formatTypeMapping>
+                        <int64>java.lang.Long</int64>
+                        <int32>java.lang.Integer</int32>
+                    </formatTypeMapping>
                 </configuration>
                 <executions>
                     <execution>

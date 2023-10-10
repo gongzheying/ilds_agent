@@ -18,7 +18,8 @@
       "type": "string"
     },
     "originalFileSize": {
-      "type": "integer"
+      "type": "integer",
+      "format": "int64"
     },
     "sender": {
       "type": "string"

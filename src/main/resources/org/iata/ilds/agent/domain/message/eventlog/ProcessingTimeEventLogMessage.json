@@ -6,10 +6,12 @@
   },
   "properties": {
     "processingInterval": {
-      "type": "integer"
+      "type": "integer",
+      "format": "int64"
     },
     "processingStartTime": {
-      "type": "integer"
+      "type": "integer",
+      "format": "int64"
     }
   }
 }

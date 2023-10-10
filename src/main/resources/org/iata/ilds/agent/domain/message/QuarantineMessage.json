@@ -6,7 +6,8 @@
   },
   "properties": {
     "callingProcessStatusId": {
-      "type": "integer"
+      "type": "integer",
+      "format": "int32"
     },
     "errorDescriptionOfParentProcess": {
       "type": "string"

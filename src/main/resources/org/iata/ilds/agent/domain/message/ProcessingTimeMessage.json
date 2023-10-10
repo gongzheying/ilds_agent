@@ -6,7 +6,8 @@
   },
   "properties": {
     "processingStartTime": {
-      "type": "integer"
+      "type": "integer",
+      "format": "int64"
     }
   }
 }
