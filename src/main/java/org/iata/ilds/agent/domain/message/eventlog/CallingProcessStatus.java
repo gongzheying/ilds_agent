@@ -1,13 +1,17 @@
 package org.iata.ilds.agent.domain.message.eventlog;
 
 
-import java.util.*;
+import org.iata.ilds.agent.domain.message.eventlog.AbstractEventLogMessage.CallingProcess;
 
-import static org.iata.ilds.agent.domain.message.eventlog.CallingProcess.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+
+import static org.iata.ilds.agent.domain.message.eventlog.AbstractEventLogMessage.CallingProcess.*;
 import static org.iata.ilds.agent.domain.message.eventlog.LogType.*;
 
 public final class CallingProcessStatus {
-    private static Map<Integer, CallingProcessStatus> idToProcessMap = new HashMap<>();
+
     private static Map<CallingProcessStatus, Integer> processToIdMap = new HashMap<>();
 
     private final LogType status;
@@ -195,37 +199,10 @@ public final class CallingProcessStatus {
         return processToIdMap.get(new CallingProcessStatus(status, callingProcess));
     }
 
-    public static List<Integer> getIds(final CallingProcess callingProcess) {
-        final List<Integer> ids = new ArrayList<>();
-        for (LogType logType : LogType.values()) {
-            Integer id = processToIdMap.get(new CallingProcessStatus(logType, callingProcess));
-            if (id != null) {
-                ids.add(id);
-            }
-        }
 
-        return ids;
-    }
-
-    public static LogType getStatus(final int id) {
-        return idToProcessMap.get(id).status;
-    }
-
-    public static CallingProcess getCallingProcess(final int id) {
-        return idToProcessMap.get(id).callingProcess;
-    }
-
-    public static String getName(final int id) {
-        return getCallingProcess(id).getName();
-    }
-
-    public static String getCode(final int id) {
-        return getCallingProcess(id).getCode();
-    }
 
     private static void add(final CallingProcess callingProcess, final LogType status, final int id) {
         CallingProcessStatus callingProcessStatus = new CallingProcessStatus(status, callingProcess);
-        idToProcessMap.put(id, callingProcessStatus);
         processToIdMap.put(callingProcessStatus, id);
     }
 

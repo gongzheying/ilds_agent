@@ -31,6 +31,7 @@ public class ActivemqConfigProperties {
         private String connectionFactory;
         private String queueOutboundDispatch;
         private String queueQuarantine;
+        private String queueEventLog;
 
     }
 

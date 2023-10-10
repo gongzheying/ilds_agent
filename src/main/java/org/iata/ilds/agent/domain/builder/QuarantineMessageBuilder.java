@@ -2,10 +2,13 @@ package org.iata.ilds.agent.domain.builder;
 
 import org.iata.ilds.agent.domain.message.DispatchCompletedMessage;
 import org.iata.ilds.agent.domain.message.QuarantineMessage;
-import org.iata.ilds.agent.domain.message.eventlog.CallingProcess;
+import org.iata.ilds.agent.domain.message.eventlog.AbstractEventLogMessage.CallingProcess;
 import org.iata.ilds.agent.domain.message.eventlog.CallingProcessStatus;
-import org.iata.ilds.agent.domain.message.eventlog.LogType;
 import org.iata.ilds.agent.util.FileTrackingUtils;
+
+import static org.iata.ilds.agent.domain.message.eventlog.AbstractEventLogMessage.CallingProcess.INBOUND_DISPATCH;
+import static org.iata.ilds.agent.domain.message.eventlog.AbstractEventLogMessage.CallingProcess.OUTBOUND_DISPATCH;
+import static org.iata.ilds.agent.domain.message.eventlog.LogType.Failed;
 
 public final class QuarantineMessageBuilder {
 
@@ -29,8 +32,8 @@ public final class QuarantineMessageBuilder {
         instance.quarantineMessage.setBsp(message.getBsp());
 
         boolean isInbound = FileTrackingUtils.isInboundDirection(message.getTrackingId());
-        CallingProcess callingProcess = isInbound ? CallingProcess.INBOUND_DISPATCH : CallingProcess.OUTBOUND_DISPATCH;
-        instance.quarantineMessage.setCallingProcessStatusId(CallingProcessStatus.getId(LogType.Failed, callingProcess));
+        CallingProcess callingProcess = isInbound ? INBOUND_DISPATCH : OUTBOUND_DISPATCH;
+        instance.quarantineMessage.setCallingProcessStatusId(CallingProcessStatus.getId(Failed, callingProcess));
 
         return instance;
     }
