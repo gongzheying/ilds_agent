@@ -4,11 +4,11 @@ import lombok.Getter;
 import org.iata.ilds.agent.domain.message.DispatchCompletedMessage;
 
 @Getter
-public class OutboundDispatchException extends RuntimeException {
+public class DispatchException extends RuntimeException {
 
     private DispatchCompletedMessage dispatchCompletedMessage;
 
-    public OutboundDispatchException(String errorMessage, DispatchCompletedMessage completeMessage) {
+    public DispatchException(String errorMessage, DispatchCompletedMessage completeMessage) {
         super(errorMessage);
         this.dispatchCompletedMessage = completeMessage;
     }

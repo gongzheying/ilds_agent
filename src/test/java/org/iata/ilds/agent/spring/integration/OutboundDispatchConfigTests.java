@@ -15,11 +15,10 @@ import org.iata.ilds.agent.domain.message.outbound.Address;
 import org.iata.ilds.agent.domain.message.outbound.Channel;
 import org.iata.ilds.agent.domain.message.outbound.OutboundDispatchMessage;
 import org.iata.ilds.agent.domain.message.outbound.RoutingFileInfo;
-import org.iata.ilds.agent.exception.OutboundDispatchException;
+import org.iata.ilds.agent.exception.DispatchException;
 import org.iata.ilds.agent.spring.data.TransferPackageRepository;
 import org.iata.ilds.agent.util.FileTrackingUtils;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -76,7 +75,7 @@ public class OutboundDispatchConfigTests {
 
     @ParameterizedTest
     @MethodSource
-    public void testOutboundDispatchExceptionFlow(TransferPackage transferPackage) {
+    public void testDispatchExceptionFlow(TransferPackage transferPackage) {
 
         prepareTransferPackageForTesting(transferPackage);
 
@@ -98,7 +97,7 @@ public class OutboundDispatchConfigTests {
 
 
         Message<DispatchCompletedMessage> message = MessageBuilder.withPayload(dispatchCompletedMessage).build();
-        MessageHandlingException e = new MessageHandlingException(message,new OutboundDispatchException("Custom Error!", dispatchCompletedMessage));
+        MessageHandlingException e = new MessageHandlingException(message,new DispatchException("Custom Error!", dispatchCompletedMessage));
 
         errorChannel.send(new ErrorMessage(e, message));
 
@@ -109,7 +108,7 @@ public class OutboundDispatchConfigTests {
 
     }
 
-    private static Stream<TransferPackage> testOutboundDispatchExceptionFlow() {
+    private static Stream<TransferPackage> testDispatchExceptionFlow() {
 
         return Stream.of(createTransferPackage());
 
