@@ -129,8 +129,8 @@ public class BasicFlowConfig {
                 )
                 .transform(Transformers.toJson())
                 .log()
-//                .handle(Jms.outboundAdapter(connectionFactory).destination(config.getJndi().getQueueEventLog()),
-//                        spec1 -> spec1.advice(retryAdvice))
+                .handle(Jms.outboundAdapter(connectionFactory).destination(config.getJndi().getQueueEventLog()),
+                        spec1 -> spec1.advice(retryAdvice))
                 .get();
     }
 
