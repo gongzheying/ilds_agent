@@ -80,7 +80,7 @@ public class OutboundDispatchConfigTests {
         prepareTransferPackageForTesting(transferPackage);
 
         DispatchCompletedMessage dispatchCompletedMessage = new DispatchCompletedMessage();
-        dispatchCompletedMessage.setProcessingStartTime((int) System.currentTimeMillis());
+        dispatchCompletedMessage.setProcessingStartTime(System.currentTimeMillis());
         dispatchCompletedMessage.setTrackingId(transferPackage.getPackageName());
         dispatchCompletedMessage.setSuccessful(false);
 
@@ -155,7 +155,7 @@ public class OutboundDispatchConfigTests {
 
     private static OutboundDispatchMessage createOutboundDispatchMessage(TransferPackage transferPackage) {
         OutboundDispatchMessage dispatchMessage = new OutboundDispatchMessage();
-        dispatchMessage.setProcessingStartTime((int) System.currentTimeMillis());
+        dispatchMessage.setProcessingStartTime(System.currentTimeMillis());
         dispatchMessage.setTrackingId(transferPackage.getPackageName());
         dispatchMessage.setLocalFilePath(transferPackage.getLocalFilePath());
 
@@ -175,7 +175,7 @@ public class OutboundDispatchConfigTests {
 
     private static OutboundDispatchMessage createWrongOutboundDispatchMessage(TransferPackage transferPackage) {
         OutboundDispatchMessage dispatchMessage = new OutboundDispatchMessage();
-        dispatchMessage.setProcessingStartTime((int) System.currentTimeMillis());
+        dispatchMessage.setProcessingStartTime(System.currentTimeMillis());
         dispatchMessage.setTrackingId(transferPackage.getPackageName());
         dispatchMessage.setLocalFilePath(transferPackage.getLocalFilePath());
 
