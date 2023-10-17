@@ -1,15 +1,13 @@
 package org.iata.ilds.agent.exception;
 
-import lombok.Getter;
 import org.iata.ilds.agent.domain.message.DispatchCompletedMessage;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessagingException;
 
-@Getter
-public class DispatchException extends RuntimeException {
+public class DispatchException extends MessagingException {
 
-    private DispatchCompletedMessage dispatchCompletedMessage;
-
-    public DispatchException(String errorMessage, DispatchCompletedMessage completeMessage) {
-        super(errorMessage);
-        this.dispatchCompletedMessage = completeMessage;
+    public DispatchException(Message<DispatchCompletedMessage> failedMessage, Throwable cause) {
+        super(failedMessage, cause);
     }
+
 }

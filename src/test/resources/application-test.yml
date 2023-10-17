@@ -1,0 +1,24 @@
+spring:
+    datasource:
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        hikari:
+            maximum-pool-size: 30
+            minimum-idle: 5
+        password: 123456
+        url: jdbc:mysql://172.18.0.2:3306/ildsdb
+        username: root
+    jpa:
+        defer-datasource-initialization: true
+    sql:
+        init:
+            mode: always
+            platform: mysql
+
+
+
+logging:
+    level:
+        org:
+            iata:
+                ilds:
+                    agent: debug

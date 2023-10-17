@@ -1,4 +1,4 @@
-package org.iata.ilds.agent.activemq;
+package org.iata.ilds.agent.config.activemq;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -32,6 +32,7 @@ public class ActivemqConfigProperties {
         private String queueOutboundDispatch;
         private String queueQuarantine;
         private String queueEventLog;
+        private String queueInboundDispatch;
 
     }
 

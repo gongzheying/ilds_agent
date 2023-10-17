@@ -1,0 +1,39 @@
+activemq:
+    ctx:
+        initialContextFactory: org.wildfly.naming.client.WildFlyInitialContextFactory
+        provideUrl: http-remoting://127.0.0.1:8080
+        securityCredentials: admin1234
+        securityPrincipal: admin
+    jndi:
+        connectionFactory: jms/RemoteConnectionFactory
+        queueEventLog: queue/ilds/eventLog
+        queueInboundDispatch: queue/ilds/inbound/inboundDispatch
+        queueOutboundDispatch: queue/ilds/outbound/outboundDispatch
+        queueQuarantine: queue/ilds/quarantine
+
+
+
+spring:
+    datasource:
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        hikari:
+            maximum-pool-size: 30
+            minimum-idle: 5
+        password: 123456
+        url: jdbc:mysql://127.0.0.1:3306/ildsdb
+        username: root
+
+
+
+logging:
+    file:
+        path: logs/ilds_agent.log
+    level:
+        root: info
+
+hosting:
+    system:
+        isis:
+            host: 127.0.0.1
+            port: 22
+            accountName: ISIS

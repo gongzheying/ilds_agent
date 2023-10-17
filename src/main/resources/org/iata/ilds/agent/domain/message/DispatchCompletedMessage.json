@@ -8,12 +8,15 @@
     "successful": {
       "type": "boolean"
     },
-    "processedLocalFilePaths": {
+    "processedDataFilePaths": {
       "type": "array",
       "title": "The files that have been processed successfully",
       "items": {
         "type": "string"
       }
+    },
+    "failedDataFilePath": {
+      "type": "string"
     }
   }
 }

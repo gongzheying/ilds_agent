@@ -1,9 +1,8 @@
-package org.iata.ilds.agent.activemq;
+package org.iata.ilds.agent.config.activemq;
 
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.jms.connection.JmsTransactionManager;
 import org.springframework.jndi.JndiObjectFactoryBean;
 
 import javax.jms.ConnectionFactory;

@@ -4,14 +4,13 @@ import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.SftpException;
 import lombok.extern.log4j.Log4j2;
 import org.iata.ilds.agent.config.activemq.ActivemqConfigProperties;
+import org.iata.ilds.agent.config.inbound.HostingSystemProperties;
 import org.iata.ilds.agent.domain.builder.DispatchCompletedMessageBuilder;
-import org.iata.ilds.agent.domain.entity.FileType;
 import org.iata.ilds.agent.domain.entity.TransferPackage;
 import org.iata.ilds.agent.domain.entity.TransferSite;
-import org.iata.ilds.agent.domain.entity.TransferStatus;
 import org.iata.ilds.agent.domain.message.DispatchCompletedMessage;
-import org.iata.ilds.agent.domain.message.outbound.OutboundDispatchMessage;
-import org.iata.ilds.agent.domain.message.outbound.RoutingFileInfo;
+import org.iata.ilds.agent.domain.message.inbound.InboundDispatchMessage;
+
 import org.iata.ilds.agent.exception.DispatchException;
 import org.iata.ilds.agent.service.DispatchCompletedService;
 import org.iata.ilds.agent.service.FileService;
@@ -35,22 +34,21 @@ import org.springframework.retry.support.RetryTemplate;
 
 import javax.jms.ConnectionFactory;
 import java.io.File;
-import java.util.List;
-import java.util.Map;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.stream.Stream;
 
+import static org.iata.ilds.agent.config.inbound.HostingSystemProperties.HostingSystem;
 
 @Log4j2
 @Configuration
-public class OutboundDispatchConfig {
-
+public class InboundDispatchConfig {
 
 
     @Bean
-    public IntegrationFlow outboundDispatchFlow(ConnectionFactory connectionFactory,
+    public IntegrationFlow inboundDispatchFlow(ConnectionFactory connectionFactory,
                                                 ActivemqConfigProperties activemqConfig,
+                                                HostingSystemProperties hostingConfig,
                                                 TransferPackageRepository transferPackageRepository,
                                                 TransferSiteRepository transferSiteRepository,
                                                 DelegatingSessionFactory<ChannelSftp.LsEntry> delegatingSessionFactory,
@@ -59,52 +57,55 @@ public class OutboundDispatchConfig {
                                                 FileService fileService,
                                                 DispatchCompletedService dispatchCompletedService) {
         return IntegrationFlows.from(
-                        Jms.inboundAdapter(connectionFactory).destination(activemqConfig.getJndi().getQueueOutboundDispatch()),
+                        Jms.inboundAdapter(connectionFactory).destination(activemqConfig.getJndi().getQueueInboundDispatch()),
                         spec -> spec.poller(poller -> poller.cron("0 0/1 * * * *").maxMessagesPerPoll(10)))
-                .transform(Transformers.fromJson(OutboundDispatchMessage.class))
+                .transform(Transformers.fromJson(InboundDispatchMessage.class))
                 .wireTap("eventLogChannel")
                 .enrichHeaders(
-                        spec -> spec.headerFunction("TransferSite", headerValueOfTransferSite(transferSiteRepository))
+                        spec -> spec.headerFunction("TransferSite", headerValueOfTransferSite(transferSiteRepository, hostingConfig))
                                 .headerFunction("TransferPackage", headerValueOfTransferPackage(transferPackageRepository))
                 )
-                .filter(filterOutboundDispatchMessage())
-                .handle(dispatchOutboundDataFiles(delegatingSessionFactory, retryTemplate, fileService))
-                .handle(dispatchOutboundCompleted(dispatchCompletedService))
+                .filter(filterInboundDispatchMessage())
+                .handle(dispatchInboundDataFiles(delegatingSessionFactory, retryTemplate))
+                .handle(dispatchInboundCompleted(dispatchCompletedService))
                 .wireTap("eventLogChannel")
                 .get();
     }
 
-
-    private Function<Message<OutboundDispatchMessage>, TransferPackage> headerValueOfTransferPackage(TransferPackageRepository transferPackageRepository) {
+    private Function<Message<InboundDispatchMessage>, TransferPackage> headerValueOfTransferPackage(TransferPackageRepository transferPackageRepository) {
         return message -> {
-            OutboundDispatchMessage outboundDispatchMessage = message.getPayload();
-            return transferPackageRepository.findByPackageName(outboundDispatchMessage.getTrackingId()).orElse(null);
+            InboundDispatchMessage inboundDispatchMessage = message.getPayload();
+            return transferPackageRepository.findByPackageName(inboundDispatchMessage.getTrackingId()).orElse(null);
         };
     }
 
-    private Function<Message<OutboundDispatchMessage>, TransferSite> headerValueOfTransferSite(TransferSiteRepository transferSiteRepository) {
+    private Function<Message<InboundDispatchMessage>, TransferSite> headerValueOfTransferSite(TransferSiteRepository transferSiteRepository,
+                                                                                              HostingSystemProperties hostingConfig) {
         return message -> {
-            OutboundDispatchMessage outboundDispatchMessage = message.getPayload();
-            RoutingFileInfo routingFileInfo = outboundDispatchMessage.getRoutingFileInfo();
-            return transferSiteRepository.findByUsernameAndIpAndPortAndRemotePath(
-                    routingFileInfo.getChannel().getAddress().getUser(),
-                    routingFileInfo.getChannel().getAddress().getIp(),
-                    routingFileInfo.getChannel().getAddress().getPort(),
-                    routingFileInfo.getChannel().getAddress().getPath()).orElse(null);
+            InboundDispatchMessage inboundDispatchMessage = message.getPayload();
+            String destination = inboundDispatchMessage.getDestination();
+            if (hostingConfig.getSystem().containsKey(destination)) {
+                HostingSystem hostingSystem = hostingConfig.getSystem().get(destination);
+                Path originalFilePath = Paths.get(inboundDispatchMessage.getOriginalFilePath());
+                return transferSiteRepository.findByUsernameAndIpAndPortAndRemotePath(
+                        hostingSystem.getAccountName(),
+                        hostingSystem.getHost(),
+                        hostingSystem.getPort(),
+                        originalFilePath.getParent().toString()).orElse(null);
+
+            }
+            return null;
         };
     }
 
-    private MessageSelector filterOutboundDispatchMessage() {
+    private MessageSelector filterInboundDispatchMessage() {
         return message -> {
-            OutboundDispatchMessage payload = (OutboundDispatchMessage) message.getPayload();
+            InboundDispatchMessage payload = (InboundDispatchMessage) message.getPayload();
             TransferPackage transferPackage = message.getHeaders().get("TransferPackage", TransferPackage.class);
             TransferSite transferSite = message.getHeaders().get("TransferSite", TransferSite.class);
 
             if (transferPackage == null) {
                 log.error("No TransferPackage \"{}\" were found in the Database.", payload.getTrackingId());
-                return false;
-            } else if (transferPackage.getStatus() == TransferStatus.Abandoned) {
-                log.warn("The TransferPackage \"{}\" was abandoned.", payload.getTrackingId());
                 return false;
             }
 
@@ -120,18 +121,9 @@ public class OutboundDispatchConfig {
         };
     }
 
-    private GenericHandler<OutboundDispatchMessage> dispatchOutboundDataFiles(DelegatingSessionFactory<ChannelSftp.LsEntry> delegatingSessionFactory,
-                                                                              RetryTemplate retryTemplate,
-                                                                              FileService fileService) {
+    private GenericHandler<InboundDispatchMessage> dispatchInboundDataFiles(DelegatingSessionFactory<ChannelSftp.LsEntry> delegatingSessionFactory,
+                                                                            RetryTemplate retryTemplate) {
         return (payload, headers) -> {
-            Map<FileType, List<File>> dataFileGroups = fileService.fetchOutboundTransferFiles(payload.getLocalFilePath());
-            Stream<File> dataFileGroupWithoutTDF = selectDataFileGroup(
-                    dataFileGroups,
-                    entry -> !FileType.Routing.equals(entry.getKey()) && !FileType.TDF.equals(entry.getKey()));
-
-            Stream<File> dataFileGroupWithTDF = selectDataFileGroup(
-                    dataFileGroups,
-                    entry -> FileType.TDF.equals(entry.getKey()));
 
 
             TransferSite transferSite = headers.get("TransferSite", TransferSite.class);
@@ -141,27 +133,18 @@ public class OutboundDispatchConfig {
             return remoteFileTemplate.executeWithClient((ClientCallback<ChannelSftp, DispatchCompletedMessage>) client -> {
 
                 DispatchCompletedMessageBuilder completedMessageBuilder = DispatchCompletedMessageBuilder.dispatchCompletedMessage(payload);
-
-                Stream.concat(dataFileGroupWithoutTDF, dataFileGroupWithTDF).forEach(file -> {
-                    try {
-                        String fileSentOut = dispatchDataFile(file, transferSite.getRemotePath(), retryTemplate, client);
-                        completedMessageBuilder.addProcessedDataFile(fileSentOut);
-                    } catch (SftpException e) {
-                        completedMessageBuilder.addFailedDataFile(file.getAbsolutePath());
-                        throw new DispatchException(MessageBuilder.withPayload(completedMessageBuilder.build()).build(), e);
-                    }
-                });
+                File file = new File(payload.getLocalFilePath());
+                try {
+                    String fileSentOut = dispatchDataFile(file, transferSite.getRemotePath(), retryTemplate, client);
+                    completedMessageBuilder.addProcessedDataFile(fileSentOut);
+                } catch (SftpException e) {
+                    completedMessageBuilder.addFailedDataFile(file.getAbsolutePath());
+                    throw new DispatchException(MessageBuilder.withPayload(completedMessageBuilder.build()).build(), e);
+                }
 
                 return completedMessageBuilder.build();
             });
         };
-    }
-
-
-    private Stream<File> selectDataFileGroup(Map<FileType, List<File>> dataFileGroups, Predicate<Map.Entry<FileType, List<File>>> p) {
-        return dataFileGroups.entrySet().stream().
-                filter(p).
-                flatMap(entry -> entry.getValue().stream());
     }
 
     private String dispatchDataFile(File file, String remotePath, RetryTemplate retryTemplate, ChannelSftp client) throws SftpException {
@@ -174,8 +157,7 @@ public class OutboundDispatchConfig {
         });
     }
 
-
-    private GenericHandler<DispatchCompletedMessage> dispatchOutboundCompleted(DispatchCompletedService dispatchCompletedService) {
+    private GenericHandler<DispatchCompletedMessage> dispatchInboundCompleted(DispatchCompletedService dispatchCompletedService) {
         return (payload, headers) -> {
             dispatchCompletedService.setCompletionStatus(payload);
             return payload;

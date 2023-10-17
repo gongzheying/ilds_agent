@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.io.FileUtils;
 import org.awaitility.Awaitility;
-import org.iata.ilds.agent.activemq.ActivemqConfigProperties;
+import org.iata.ilds.agent.config.activemq.ActivemqConfigProperties;
 import org.iata.ilds.agent.domain.entity.FileType;
 import org.iata.ilds.agent.domain.entity.TransferFile;
 import org.iata.ilds.agent.domain.entity.TransferPackage;
@@ -84,12 +84,12 @@ public class OutboundDispatchConfigTests {
         dispatchCompletedMessage.setTrackingId(transferPackage.getPackageName());
         dispatchCompletedMessage.setSuccessful(false);
 
-        dispatchCompletedMessage.setProcessedLocalFilePaths(transferPackage.getTransferFiles().stream()
+        dispatchCompletedMessage.setProcessedDataFilePaths(transferPackage.getTransferFiles().stream()
                 .filter(f -> FileType.Normal.equals(f.getFileType()))
                 .map(TransferFile::getFileName)
                 .toList());
 
-        dispatchCompletedMessage.setLocalFilePath(transferPackage.getTransferFiles().stream()
+        dispatchCompletedMessage.setFailedDataFilePath(transferPackage.getTransferFiles().stream()
                 .filter(f -> FileType.TDF.equals(f.getFileType()))
                 .map(TransferFile::getFileName)
                 .findFirst().orElse(null));
@@ -97,9 +97,9 @@ public class OutboundDispatchConfigTests {
 
 
         Message<DispatchCompletedMessage> message = MessageBuilder.withPayload(dispatchCompletedMessage).build();
-        MessageHandlingException e = new MessageHandlingException(message,new DispatchException("Custom Error!", dispatchCompletedMessage));
+        DispatchException dispatchException = new DispatchException(message, new RuntimeException("Custom Error!"));
 
-        errorChannel.send(new ErrorMessage(e, message));
+        errorChannel.send(new ErrorMessage(dispatchException));
 
         Awaitility.await().atMost(Duration.ofSeconds(30)).until(() ->
                 TransferStatus.Failed.equals(

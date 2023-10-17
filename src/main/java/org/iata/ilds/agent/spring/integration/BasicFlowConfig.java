@@ -1,7 +1,8 @@
 package org.iata.ilds.agent.spring.integration;
 
+import com.jcraft.jsch.ChannelSftp;
 import lombok.extern.log4j.Log4j2;
-import org.iata.ilds.agent.activemq.ActivemqConfigProperties;
+import org.iata.ilds.agent.config.activemq.ActivemqConfigProperties;
 import org.iata.ilds.agent.domain.builder.EventLogMessageBuilder;
 import org.iata.ilds.agent.domain.builder.QuarantineMessageBuilder;
 import org.iata.ilds.agent.domain.message.DispatchCompletedMessage;
@@ -15,12 +16,12 @@ import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
 import org.springframework.integration.dsl.MessageChannels;
 import org.springframework.integration.dsl.Transformers;
+import org.springframework.integration.file.remote.session.DelegatingSessionFactory;
 import org.springframework.integration.handler.GenericHandler;
 import org.springframework.integration.handler.advice.RequestHandlerRetryAdvice;
 import org.springframework.integration.jms.dsl.Jms;
-import org.springframework.integration.transformer.GenericTransformer;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.MessageHandlingException;
 import org.springframework.retry.support.RetryTemplate;
 
 import javax.jms.ConnectionFactory;
@@ -59,6 +60,13 @@ public class BasicFlowConfig {
         return retryAdvice;
     }
 
+
+    @Bean
+    public DelegatingSessionFactory<ChannelSftp.LsEntry> delegatingSessionFactory(DBSessionFactoryLocator dBSessionFactoryLocator) {
+        return new DelegatingSessionFactory<>(dBSessionFactoryLocator);
+    }
+
+
     @Bean
     public IntegrationFlow exceptionTypeRouteFlow() {
         return IntegrationFlows.from("errorChannel")
@@ -73,31 +81,27 @@ public class BasicFlowConfig {
 
     @Bean
     public IntegrationFlow dispatchExceptionFlow(ConnectionFactory connectionFactory,
-                                                 ActivemqConfigProperties config,
+                                                 ActivemqConfigProperties activemqConfig,
                                                  DispatchCompletedService dispatchCompletedService,
                                                  RequestHandlerRetryAdvice retryAdvice) {
         return IntegrationFlows.from("dispatchExceptionChannel")
-                .log()
-                .transform(toDispatchException())
                 .wireTap("eventLogChannel")
                 .handle(handleDispatchException(dispatchCompletedService))
                 .transform(Transformers.toJson())
-                .handle(Jms.outboundAdapter(connectionFactory).destination(config.getJndi().getQueueQuarantine()),
+                .handle(Jms.outboundAdapter(connectionFactory).destination(activemqConfig.getJndi().getQueueQuarantine()),
                         spec1 -> spec1.advice(retryAdvice))
                 .get();
     }
 
-
-    private GenericTransformer<MessageHandlingException, DispatchException> toDispatchException() {
-        return payload -> (DispatchException) payload.getMostSpecificCause();
-    }
-
     private GenericHandler<DispatchException> handleDispatchException(DispatchCompletedService dispatchCompletedService) {
         return (payload, headers) -> {
-            dispatchCompletedService.setCompletionStatus(payload.getDispatchCompletedMessage());
+            Message<DispatchCompletedMessage> failedMessage = (Message<DispatchCompletedMessage>) payload.getFailedMessage();
+            Throwable cause = payload.getCause();
 
-            return QuarantineMessageBuilder.quarantineMessage(payload.getDispatchCompletedMessage())
-                    .errorDescriptionOfParentProcess(payload.getMessage())
+            dispatchCompletedService.setCompletionStatus(failedMessage.getPayload());
+
+            return QuarantineMessageBuilder.quarantineMessage(failedMessage.getPayload())
+                    .errorDescriptionOfParentProcess(cause.getMessage())
                     .build();
 
         };
@@ -105,7 +109,7 @@ public class BasicFlowConfig {
 
     @Bean
     public IntegrationFlow eventLogFlow(ConnectionFactory connectionFactory,
-                                        ActivemqConfigProperties config,
+                                        ActivemqConfigProperties activemqConfig,
                                         RequestHandlerRetryAdvice retryAdvice) {
         return IntegrationFlows.from("eventLogChannel")
                 .<Object, Class<?>>route(Object::getClass,
@@ -122,14 +126,18 @@ public class BasicFlowConfig {
                                 .subFlowMapping(
                                         DispatchException.class,
                                         f -> f.<DispatchException, AbstractEventLogMessage>transform(
-                                                payload -> EventLogMessageBuilder.eventLog(payload.getDispatchCompletedMessage())
-                                                        .failedBySystem(payload.getMessage()))
+                                                payload -> {
+                                                    Message<DispatchCompletedMessage> failedMessage = (Message<DispatchCompletedMessage>) payload.getFailedMessage();
+                                                    Throwable cause = payload.getCause();
+                                                    return EventLogMessageBuilder.eventLog(failedMessage.getPayload()).failedBySystem(cause.getMessage());
+                                                })
+
                                 )
 
                 )
                 .transform(Transformers.toJson())
                 .log()
-                .handle(Jms.outboundAdapter(connectionFactory).destination(config.getJndi().getQueueEventLog()),
+                .handle(Jms.outboundAdapter(connectionFactory).destination(activemqConfig.getJndi().getQueueEventLog()),
                         spec1 -> spec1.advice(retryAdvice))
                 .get();
     }
