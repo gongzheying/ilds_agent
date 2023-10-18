@@ -14,6 +14,16 @@ spring:
             mode: always
             platform: mysql
 
+hosting:
+    system:
+        isis:
+            host: 172.18.0.3
+            port: 22
+            accountName: foo
+        wrong-isis:
+            host: 172.18.0.4
+            port: 22
+            accountName: wrong-foo
 
 
 logging:
@@ -22,3 +32,6 @@ logging:
             iata:
                 ilds:
                     agent: debug
+
+
+
