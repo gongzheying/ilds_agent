@@ -23,7 +23,7 @@ public final class QuarantineMessageBuilder {
         instance.quarantineMessage.setTrackingId(message.getTrackingId());
         instance.quarantineMessage.setProcessingStartTime(message.getProcessingStartTime());
 
-        instance.quarantineMessage.setLocalFilePath(message.getFailedDataFilePath());
+        instance.quarantineMessage.setLocalFilePath(message.getLocalFilePath());
         instance.quarantineMessage.setOriginalFileName(message.getOriginalFileName());
         instance.quarantineMessage.setOriginalFilePath(message.getOriginalFilePath());
         instance.quarantineMessage.setOriginalFileSize(message.getOriginalFileSize());
