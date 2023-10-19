@@ -7,6 +7,7 @@ import org.iata.ilds.agent.domain.builder.EventLogMessageBuilder;
 import org.iata.ilds.agent.domain.builder.QuarantineMessageBuilder;
 import org.iata.ilds.agent.domain.message.DispatchCompletedMessage;
 import org.iata.ilds.agent.domain.message.eventlog.AbstractEventLogMessage;
+import org.iata.ilds.agent.domain.message.inbound.InboundDispatchMessage;
 import org.iata.ilds.agent.domain.message.outbound.OutboundDispatchMessage;
 import org.iata.ilds.agent.exception.DispatchException;
 import org.iata.ilds.agent.service.DispatchCompletedService;
@@ -25,6 +26,7 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.retry.support.RetryTemplate;
 
 import javax.jms.ConnectionFactory;
+import static org.springframework.integration.handler.LoggingHandler.Level;
 
 @Log4j2
 @Configuration
@@ -74,7 +76,7 @@ public class BasicFlowConfig {
                         r -> r.channelMapping(DispatchException.class, "dispatchExceptionChannel")
                                 .defaultOutputToParentFlow()
                 )
-                .log()
+                .log(Level.DEBUG, BasicFlowConfig.class.getName())
                 .get();
     }
 
@@ -89,7 +91,7 @@ public class BasicFlowConfig {
                 .handle(handleDispatchException(dispatchCompletedService))
                 .transform(Transformers.toJson())
                 .handle(Jms.outboundAdapter(connectionFactory).destination(activemqConfig.getJndi().getQueueQuarantine()),
-                        spec1 -> spec1.advice(retryAdvice))
+                        s -> s.advice(retryAdvice))
                 .get();
     }
 
@@ -114,9 +116,14 @@ public class BasicFlowConfig {
         return IntegrationFlows.from("eventLogChannel")
                 .<Object, Class<?>>route(Object::getClass,
                         r -> r.subFlowMapping(
+                                        InboundDispatchMessage.class,
+                                        f -> f.<InboundDispatchMessage, AbstractEventLogMessage>transform(
+                                                payload -> EventLogMessageBuilder.eventLog(payload).started())
+                                )
+                                .subFlowMapping(
                                         OutboundDispatchMessage.class,
                                         f -> f.<OutboundDispatchMessage, AbstractEventLogMessage>transform(
-                                                payload -> EventLogMessageBuilder.eventLog(payload).started())
+                                                payload -> EventLogMessageBuilder.eventLog(payload).completed())
                                 )
                                 .subFlowMapping(
                                         DispatchCompletedMessage.class,
@@ -136,9 +143,9 @@ public class BasicFlowConfig {
 
                 )
                 .transform(Transformers.toJson())
-                .log()
+                .log(Level.DEBUG, BasicFlowConfig.class.getName())
                 .handle(Jms.outboundAdapter(connectionFactory).destination(activemqConfig.getJndi().getQueueEventLog()),
-                        spec1 -> spec1.advice(retryAdvice))
+                        s -> s.advice(retryAdvice))
                 .get();
     }
 

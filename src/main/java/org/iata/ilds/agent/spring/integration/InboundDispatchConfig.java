@@ -12,6 +12,7 @@ import org.iata.ilds.agent.domain.message.DispatchCompletedMessage;
 import org.iata.ilds.agent.domain.message.inbound.InboundDispatchMessage;
 
 import org.iata.ilds.agent.exception.DispatchException;
+import org.iata.ilds.agent.exception.DispatchFileException;
 import org.iata.ilds.agent.service.DispatchCompletedService;
 import org.iata.ilds.agent.service.FileService;
 import org.iata.ilds.agent.spring.data.TransferPackageRepository;
@@ -29,6 +30,7 @@ import org.springframework.integration.handler.advice.RequestHandlerRetryAdvice;
 import org.springframework.integration.jms.dsl.Jms;
 import org.springframework.integration.sftp.session.SftpRemoteFileTemplate;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.retry.support.RetryTemplate;
 
@@ -47,25 +49,23 @@ public class InboundDispatchConfig {
 
     @Bean
     public IntegrationFlow inboundDispatchFlow(ConnectionFactory connectionFactory,
-                                                ActivemqConfigProperties activemqConfig,
-                                                HostingSystemProperties hostingConfig,
-                                                TransferPackageRepository transferPackageRepository,
-                                                TransferSiteRepository transferSiteRepository,
-                                                DelegatingSessionFactory<ChannelSftp.LsEntry> delegatingSessionFactory,
-                                                RetryTemplate retryTemplate,
-                                                RequestHandlerRetryAdvice retryAdvice,
-                                                FileService fileService,
-                                                DispatchCompletedService dispatchCompletedService) {
+                                               ActivemqConfigProperties activemqConfig,
+                                               HostingSystemProperties hostingConfig,
+                                               TransferPackageRepository transferPackageRepository,
+                                               TransferSiteRepository transferSiteRepository,
+                                               DelegatingSessionFactory<ChannelSftp.LsEntry> delegatingSessionFactory,
+                                               RetryTemplate retryTemplate,
+                                               DispatchCompletedService dispatchCompletedService) {
         return IntegrationFlows.from(
                         Jms.inboundAdapter(connectionFactory).destination(activemqConfig.getJndi().getQueueInboundDispatch()),
-                        spec -> spec.poller(poller -> poller.cron("0 0/1 * * * *").maxMessagesPerPoll(10)))
+                        s -> s.poller(p -> p.cron("0 0/1 * * * *").maxMessagesPerPoll(10)))
                 .transform(Transformers.fromJson(InboundDispatchMessage.class))
                 .wireTap("eventLogChannel")
                 .enrichHeaders(
-                        spec -> spec.headerFunction("TransferSite", headerValueOfTransferSite(transferSiteRepository, hostingConfig))
+                        s -> s.headerFunction("TransferSite", headerValueOfTransferSite(transferSiteRepository, hostingConfig))
                                 .headerFunction("TransferPackage", headerValueOfTransferPackage(transferPackageRepository))
                 )
-                .filter(filterInboundDispatchMessage())
+                .filter(filterInboundDispatchMessage(hostingConfig))
                 .handle(dispatchInboundDataFiles(delegatingSessionFactory, retryTemplate))
                 .handle(dispatchInboundCompleted(dispatchCompletedService))
                 .wireTap("eventLogChannel")
@@ -98,22 +98,38 @@ public class InboundDispatchConfig {
         };
     }
 
-    private MessageSelector filterInboundDispatchMessage() {
+    private MessageSelector filterInboundDispatchMessage(HostingSystemProperties hostingConfig) {
         return message -> {
             InboundDispatchMessage payload = (InboundDispatchMessage) message.getPayload();
             TransferPackage transferPackage = message.getHeaders().get("TransferPackage", TransferPackage.class);
             TransferSite transferSite = message.getHeaders().get("TransferSite", TransferSite.class);
 
             if (transferPackage == null) {
-                log.error("No TransferPackage \"{}\" were found in the Database.", payload.getTrackingId());
+                log.error("The TransferPackage \"{}\" is not registered in the system.", payload.getTrackingId());
                 return false;
             }
 
             if (transferSite == null) {
-                log.error("No TransferSite \"{}\" were found in the Database.", payload.getTrackingId());
+                if (hostingConfig.getSystem().containsKey(payload.getDestination())) {
+                    HostingSystem hostingSystem = hostingConfig.getSystem().get(payload.getDestination());
+                    Path originalFilePath = Paths.get(payload.getOriginalFilePath());
+                    log.error("The TransferSite \"{}\" is not registered in the system.",
+                            String.format("%s@%s:%d:%s",
+                                    hostingSystem.getAccountName(),
+                                    hostingSystem.getHost(),
+                                    hostingSystem.getPort(),
+                                    originalFilePath.getParent().toString()
+
+                            )
+                    );
+                } else {
+                    log.error("The TransferSite \"{}\" is not registered in the system.", payload.getDestination());
+                }
+
+
                 return false;
             } else if (transferSite.getCredential() == null) {
-                log.error("No login credentials were set for the TransferSite \"{}\"", transferSite.getId());
+                log.error("The TransferSite \"{}\" is not configured with login credential.", transferSite.getId());
                 return false;
             }
 
@@ -130,31 +146,34 @@ public class InboundDispatchConfig {
             delegatingSessionFactory.setThreadKey(transferSite.getId());
 
             SftpRemoteFileTemplate remoteFileTemplate = new SftpRemoteFileTemplate(delegatingSessionFactory);
-            return remoteFileTemplate.executeWithClient((ClientCallback<ChannelSftp, DispatchCompletedMessage>) client -> {
-
-                DispatchCompletedMessageBuilder completedMessageBuilder = DispatchCompletedMessageBuilder.dispatchCompletedMessage(payload);
-                File file = new File(payload.getLocalFilePath());
-                try {
-                    String fileSentOut = dispatchDataFile(file, transferSite.getRemotePath(), retryTemplate, client);
-                    completedMessageBuilder.addProcessedDataFile(fileSentOut);
-                } catch (SftpException e) {
-                    completedMessageBuilder.addFailedDataFile(file.getAbsolutePath());
-                    throw new DispatchException(MessageBuilder.withPayload(completedMessageBuilder.build()).build(), e);
-                }
-
+            DispatchCompletedMessageBuilder completedMessageBuilder = DispatchCompletedMessageBuilder.dispatchCompletedMessage(payload);
+            File file = new File(payload.getLocalFilePath());
+            try {
+                String fileSentOut =  remoteFileTemplate.executeWithClient(
+                        (ClientCallback<ChannelSftp, String>) client -> dispatchDataFile(file, transferSite.getRemotePath(), retryTemplate, client)
+                );
+                completedMessageBuilder.addProcessedDataFile(fileSentOut);
                 return completedMessageBuilder.build();
-            });
+            } catch (DispatchFileException e) {
+                completedMessageBuilder.addFailedDataFile(e.getFailedFile().getAbsolutePath());
+                throw new DispatchException(MessageBuilder.withPayload(completedMessageBuilder.build()).build(), e.getCause());
+            } catch (MessagingException e) { //failed to create SFTP Session
+                completedMessageBuilder.addFailedDataFile(file.getAbsolutePath());
+                throw new DispatchException(MessageBuilder.withPayload(completedMessageBuilder.build()).build(), e.getCause());
+            }
+
         };
     }
 
-    private String dispatchDataFile(File file, String remotePath, RetryTemplate retryTemplate, ChannelSftp client) throws SftpException {
-        return retryTemplate.execute(context -> {
-
-            log.debug("put {} to {}", file.getAbsolutePath(), String.format("%s/%s", remotePath, file.getName()));
-
-            client.put(file.getAbsolutePath(), String.format("%s/%s", remotePath, file.getName()));
-            return file.getAbsolutePath();
-        });
+    private String dispatchDataFile(File file, String remotePath, RetryTemplate retryTemplate, ChannelSftp client)  {
+        try {
+            return retryTemplate.execute(context -> {
+                client.put(file.getAbsolutePath(), String.format("%s/%s", remotePath, file.getName()));
+                return file.getAbsolutePath();
+            });
+        } catch (SftpException e) {
+            throw new DispatchFileException(file, e);
+        }
     }
 
     private GenericHandler<DispatchCompletedMessage> dispatchInboundCompleted(DispatchCompletedService dispatchCompletedService) {

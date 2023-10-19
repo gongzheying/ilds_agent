@@ -14,6 +14,7 @@ import org.iata.ilds.agent.domain.message.inbound.InboundDispatchMessage;
 import org.iata.ilds.agent.spring.data.TransferPackageRepository;
 import org.iata.ilds.agent.util.FileTrackingUtils;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -48,13 +49,33 @@ public class InboundDispatchConfigTests {
     @Autowired
     private ActivemqConfigProperties config;
 
-    @Transactional
-    public void prepareTransferPackageForTesting(TransferPackage transferPackage) {
+    private void prepareTransferPackageForTesting(TransferPackage transferPackage) {
 
         if (transferPackageRepository.existsById(transferPackage.getId())) {
             transferPackageRepository.deleteById(transferPackage.getId());
         }
         transferPackageRepository.save(transferPackage);
+
+    }
+
+    @Test
+    public void testInvalidInboundDispatchFlow() {
+
+        TransferPackage transferPackage = createTransferPackage();
+        InboundDispatchMessage inboundDispatchMessage = createInvaildInboundDispatchMessage(transferPackage);
+        prepareTransferPackageForTesting(transferPackage);
+        try {
+            JmsTemplate jmsTemplate = new JmsTemplate(connectionFactory);
+            jmsTemplate.convertAndSend(config.getJndi().getQueueInboundDispatch(), objectMapper.writeValueAsString(inboundDispatchMessage));
+        } catch (JsonProcessingException e) {
+            Assertions.fail("JSON serialization failed", e);
+        }
+
+        Awaitility.await().timeout(Duration.ofSeconds(60)).pollDelay(Duration.ofSeconds(30)).until(() ->
+                TransferStatus.Processing.equals(
+                        transferPackageRepository.findByPackageName(transferPackage.getPackageName()).get().getStatus()
+                ));
+
 
     }
 
@@ -73,7 +94,7 @@ public class InboundDispatchConfigTests {
             Assertions.fail("JSON serialization failed", e);
         }
 
-        Awaitility.await().atMost(Duration.ofSeconds(1 * 60)).until(() ->
+        Awaitility.await().atMost(Duration.ofSeconds(3 * 60)).until(() ->
                 expectedStatus.equals(
                         transferPackageRepository.findByPackageName(transferPackage.getPackageName()).get().getStatus()
                 ));
@@ -119,6 +140,17 @@ public class InboundDispatchConfigTests {
         return dispatchMessage;
     }
 
+    private static InboundDispatchMessage createInvaildInboundDispatchMessage(TransferPackage transferPackage) {
+        InboundDispatchMessage dispatchMessage = new InboundDispatchMessage();
+        dispatchMessage.setProcessingStartTime(System.currentTimeMillis());
+        dispatchMessage.setTrackingId(transferPackage.getPackageName());
+        dispatchMessage.setLocalFilePath(transferPackage.getLocalFilePath());
+        dispatchMessage.setOriginalFilePath(transferPackage.getOriginalFilePath());
+        dispatchMessage.setDestination("not-exist-isis");
+
+        return dispatchMessage;
+    }
+
     private static TransferPackage createTransferPackage() {
         String trackingId = FileTrackingUtils.generateTrackingId(true);
         TransferPackage transferPackage = new TransferPackage();
@@ -134,7 +166,7 @@ public class InboundDispatchConfigTests {
         transferFile.setFileType(FileType.Normal);
         transferFile.setStatus(TransferStatus.Processing);
         try {
-            createTestFile(transferPackage.getLocalFilePath(), transferFile.getFileName());
+            createTestFile(transferPackage.getLocalFilePath());
             transferFile.setTransferPackage(transferPackage);
             transferPackage.getTransferFiles().add(transferFile);
         } catch (IOException e) {
@@ -143,12 +175,12 @@ public class InboundDispatchConfigTests {
         return transferPackage;
     }
 
-    private static void createTestFile(String localFilePath, String filename) throws IOException {
-        File dir = new File(localFilePath);
-        if (!dir.exists()) {
-            FileUtils.forceMkdir(dir);
+    private static void createTestFile(String localFilePath) throws IOException {
+        File file = new File(localFilePath);
+        if (!file.getParentFile().exists()) {
+            FileUtils.forceMkdir(file.getParentFile());
         }
-        File file = new File(dir, filename);
+
         FileUtils.writeStringToFile(file, "It works", "utf-8");
 
     }

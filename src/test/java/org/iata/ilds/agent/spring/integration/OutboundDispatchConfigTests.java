@@ -11,6 +11,7 @@ import org.iata.ilds.agent.domain.entity.TransferFile;
 import org.iata.ilds.agent.domain.entity.TransferPackage;
 import org.iata.ilds.agent.domain.entity.TransferStatus;
 import org.iata.ilds.agent.domain.message.DispatchCompletedMessage;
+import org.iata.ilds.agent.domain.message.inbound.InboundDispatchMessage;
 import org.iata.ilds.agent.domain.message.outbound.Address;
 import org.iata.ilds.agent.domain.message.outbound.Channel;
 import org.iata.ilds.agent.domain.message.outbound.OutboundDispatchMessage;
@@ -19,6 +20,7 @@ import org.iata.ilds.agent.exception.DispatchException;
 import org.iata.ilds.agent.spring.data.TransferPackageRepository;
 import org.iata.ilds.agent.util.FileTrackingUtils;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -28,16 +30,14 @@ import org.springframework.integration.support.MessageBuilder;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.MessageHandlingException;
 import org.springframework.messaging.support.ErrorMessage;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 
 import javax.jms.ConnectionFactory;
 import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
 import java.util.stream.Stream;
 
 @Log4j2
@@ -47,10 +47,6 @@ public class OutboundDispatchConfigTests {
 
     @Autowired
     private TransferPackageRepository transferPackageRepository;
-
-
-    @Autowired
-    private MessageChannel errorChannel;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -62,8 +58,7 @@ public class OutboundDispatchConfigTests {
     private ActivemqConfigProperties config;
 
 
-    @Transactional
-    public void prepareTransferPackageForTesting(TransferPackage transferPackage) {
+    private void prepareTransferPackageForTesting(TransferPackage transferPackage) {
 
         if (transferPackageRepository.existsById(transferPackage.getId())) {
             transferPackageRepository.deleteById(transferPackage.getId());
@@ -72,48 +67,26 @@ public class OutboundDispatchConfigTests {
 
     }
 
+    @Test
+    public void testInvalidOutboundDispatchFlow() {
 
-    @ParameterizedTest
-    @MethodSource
-    public void testDispatchExceptionFlow(TransferPackage transferPackage) {
-
+        TransferPackage transferPackage = createTransferPackage();
+        OutboundDispatchMessage outboundDispatchMessage = createInvalidOutboundDispatchMessage(transferPackage);
         prepareTransferPackageForTesting(transferPackage);
+        try {
+            JmsTemplate jmsTemplate = new JmsTemplate(connectionFactory);
+            jmsTemplate.convertAndSend(config.getJndi().getQueueOutboundDispatch(), objectMapper.writeValueAsString(outboundDispatchMessage));
+        } catch (JsonProcessingException e) {
+            Assertions.fail("JSON serialization failed", e);
+        }
 
-        DispatchCompletedMessage dispatchCompletedMessage = new DispatchCompletedMessage();
-        dispatchCompletedMessage.setProcessingStartTime(System.currentTimeMillis());
-        dispatchCompletedMessage.setTrackingId(transferPackage.getPackageName());
-        dispatchCompletedMessage.setSuccessful(false);
-
-        dispatchCompletedMessage.setProcessedDataFilePaths(transferPackage.getTransferFiles().stream()
-                .filter(f -> FileType.Normal.equals(f.getFileType()))
-                .map(TransferFile::getFileName)
-                .toList());
-
-        dispatchCompletedMessage.setFailedDataFilePath(transferPackage.getTransferFiles().stream()
-                .filter(f -> FileType.TDF.equals(f.getFileType()))
-                .map(TransferFile::getFileName)
-                .findFirst().orElse(null));
-
-
-
-        Message<DispatchCompletedMessage> message = MessageBuilder.withPayload(dispatchCompletedMessage).build();
-        DispatchException dispatchException = new DispatchException(message, new RuntimeException("Custom Error!"));
-
-        errorChannel.send(new ErrorMessage(dispatchException));
-
-        Awaitility.await().atMost(Duration.ofSeconds(30)).until(() ->
-                TransferStatus.Failed.equals(
+        Awaitility.await().timeout(Duration.ofSeconds(60)).pollDelay(Duration.ofSeconds(30)).until(() ->
+                TransferStatus.Processing.equals(
                         transferPackageRepository.findByPackageName(transferPackage.getPackageName()).get().getStatus()
                 ));
 
-    }
-
-    private static Stream<TransferPackage> testDispatchExceptionFlow() {
-
-        return Stream.of(createTransferPackage());
 
     }
-
 
     @ParameterizedTest
     @MethodSource
@@ -183,8 +156,8 @@ public class OutboundDispatchConfigTests {
         Channel channel = new Channel();
         Address address = new Address();
         address.setIp("172.18.0.4");
-        address.setPort(22);
-        address.setPath("/upload_err");
+        address.setPort(2222);
+        address.setPath("/upload");
         address.setUser("foo");
         channel.setAddress(address);
         routingFileInfo.setChannel(channel);
@@ -192,6 +165,27 @@ public class OutboundDispatchConfigTests {
         dispatchMessage.setRoutingFileInfo(routingFileInfo);
         return dispatchMessage;
     }
+
+    private static OutboundDispatchMessage createInvalidOutboundDispatchMessage(TransferPackage transferPackage) {
+        OutboundDispatchMessage dispatchMessage = new OutboundDispatchMessage();
+        dispatchMessage.setProcessingStartTime(System.currentTimeMillis());
+        dispatchMessage.setTrackingId(transferPackage.getPackageName());
+        dispatchMessage.setLocalFilePath(transferPackage.getLocalFilePath());
+
+        RoutingFileInfo routingFileInfo = new RoutingFileInfo();
+        Channel channel = new Channel();
+        Address address = new Address();
+        address.setIp("172.18.0.5");
+        address.setPort(2222);
+        address.setPath("/upload");
+        address.setUser("foo");
+        channel.setAddress(address);
+        routingFileInfo.setChannel(channel);
+
+        dispatchMessage.setRoutingFileInfo(routingFileInfo);
+        return dispatchMessage;
+    }
+
 
     private static TransferPackage createTransferPackage() {
         String trackingId = FileTrackingUtils.generateTrackingId(false);
