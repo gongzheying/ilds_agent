@@ -10,7 +10,6 @@ import org.springframework.integration.file.remote.session.SessionFactory;
 import org.springframework.integration.file.remote.session.SessionFactoryLocator;
 import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
 import org.springframework.stereotype.Component;
-import org.wildfly.security.auth.realm.AggregateSecurityRealm;
 
 import java.util.Map;
 import java.util.Optional;

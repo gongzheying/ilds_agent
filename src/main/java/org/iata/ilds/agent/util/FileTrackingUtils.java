@@ -16,7 +16,7 @@ public final class FileTrackingUtils {
     public static final char OUTBOUND_DIRECTION_SYMBOL = 'O';
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
-    private static Pattern compiledTrackingIdPattern = Pattern.compile(TRACKING_ID_PATTERN);
+    private static final Pattern compiledTrackingIdPattern = Pattern.compile(TRACKING_ID_PATTERN);
 
     private FileTrackingUtils() {
     }

@@ -21,7 +21,7 @@ import static org.iata.ilds.agent.domain.message.eventlog.LogType.*;
 
 public final class EventLogMessageBuilder {
 
-    private AbstractEventLogMessage eventLogMessage;
+    private final AbstractEventLogMessage eventLogMessage;
     private EventLogMessageBuilder(AbstractEventLogMessage eventLogMessage) {
         this.eventLogMessage = eventLogMessage;
     }

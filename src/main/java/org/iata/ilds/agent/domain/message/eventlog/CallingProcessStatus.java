@@ -12,7 +12,7 @@ import static org.iata.ilds.agent.domain.message.eventlog.LogType.*;
 
 public final class CallingProcessStatus {
 
-    private static Map<CallingProcessStatus, Integer> processToIdMap = new HashMap<>();
+    private static final Map<CallingProcessStatus, Integer> processToIdMap = new HashMap<>();
 
     private final LogType status;
     private final CallingProcess callingProcess;

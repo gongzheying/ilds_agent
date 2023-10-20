@@ -23,7 +23,7 @@ public class FileServiceImpl implements FileService {
         TDF("tdf"),
         HOTADD("hotadd"),
         BINLIST("csv");
-        private String extension;
+        private final String extension;
         TRANSFER_FILE_EXTENSION(String extension) {
             this.extension = extension;
         }

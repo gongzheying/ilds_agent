@@ -12,7 +12,7 @@ import static org.iata.ilds.agent.domain.message.eventlog.LogType.Failed;
 
 public final class QuarantineMessageBuilder {
 
-    private QuarantineMessage quarantineMessage;
+    private final QuarantineMessage quarantineMessage;
     private QuarantineMessageBuilder() {
         quarantineMessage = new QuarantineMessage();
     }

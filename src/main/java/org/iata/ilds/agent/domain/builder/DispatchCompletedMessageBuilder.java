@@ -12,7 +12,7 @@ public final class DispatchCompletedMessageBuilder {
     static final String HOSTING = "hosting";
 
 
-    private DispatchCompletedMessage dispatchCompletedMessage;
+    private final DispatchCompletedMessage dispatchCompletedMessage;
 
     private DispatchCompletedMessageBuilder() {
         dispatchCompletedMessage = new DispatchCompletedMessage();
