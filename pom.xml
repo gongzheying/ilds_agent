@@ -9,9 +9,9 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>org.iata</groupId>
-    <artifactId>ilds_agent</artifactId>
+    <artifactId>ilds-distribution</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>ilds_agent</name>
+    <name>ILDS New Distribution App</name>
     <description>ilds_agent</description>
     <properties>
         <java.version>17</java.version>
