@@ -149,6 +149,7 @@ public class OutboundDispatchConfig {
 
 
             try {
+
                 delegatingSessionFactory.setThreadKey(transferSite.getId());
                 SftpRemoteFileTemplate remoteFileTemplate = new SftpRemoteFileTemplate(delegatingSessionFactory);
 
@@ -173,6 +174,9 @@ public class OutboundDispatchConfig {
 
                 return completedMessageBuilder.build();
             } catch (MessagingException e) {
+
+                log.error("Failed while dispatching outbound data files", e.getCause());
+
                 if (e.getCause() instanceof SftpException) {
                     completedMessageBuilder.addFailedDataFile(StringUtils.replace(e.getMessage(), "An error occurred while uploading file ", ""));
                 } else { //failed to create SFTP Session

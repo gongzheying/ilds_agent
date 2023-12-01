@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Log4j2
@@ -50,6 +51,11 @@ public class DBSessionFactoryLocator implements SessionFactoryLocator<ChannelSft
         sftpSessionFactory.setPort(transferSite.getPort());
         sftpSessionFactory.setUser(transferSite.getUsername());
 
+        Properties config = new Properties();
+        config.put("PubkeyAcceptedAlgorithms","ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,rsa-sha2-512,rsa-sha2-256");
+        config.put("StrictHostKeyChecking", "no");
+        sftpSessionFactory.setSessionConfig(config);
+
         if (TransferSiteCredentialType.PasswordOnly.equals(transferSite.getCredentialType())) {
             sftpSessionFactory.setPassword(transferSite.getCredential().getPassword());
         } else if (TransferSiteCredentialType.SSHKeyOnly.equals(transferSite.getCredentialType()) ){
@@ -59,6 +65,14 @@ public class DBSessionFactoryLocator implements SessionFactoryLocator<ChannelSft
             sftpSessionFactory.setPrivateKey(new FileSystemResource(transferSite.getCredential().getPrivateKeyName()));
             sftpSessionFactory.setPrivateKeyPassphrase(transferSite.getCredential().getPrivateKeyPassphrase());
         }
+
+        log.info("Using the credential(id={},type={}) for site {}@{}:{}:{}",
+                transferSite.getCredential().getId(),
+                transferSite.getCredentialType(),
+                transferSite.getUsername(),
+                transferSite.getIp(),
+                transferSite.getPort(),
+                transferSite.getRemotePath());
 
         return sftpSessionFactory;
     }

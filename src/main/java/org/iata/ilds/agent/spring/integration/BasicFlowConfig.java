@@ -26,6 +26,9 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.retry.support.RetryTemplate;
 
 import javax.jms.ConnectionFactory;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
 import static org.springframework.integration.handler.LoggingHandler.Level;
 
 @Log4j2
@@ -76,7 +79,7 @@ public class BasicFlowConfig {
                         r -> r.channelMapping(DispatchException.class, "dispatchExceptionChannel")
                                 .defaultOutputToParentFlow()
                 )
-                .log(Level.DEBUG, BasicFlowConfig.class.getName())
+                .log(Level.ERROR, BasicFlowConfig.class.getName())
                 .get();
     }
 
@@ -98,7 +101,7 @@ public class BasicFlowConfig {
     private GenericHandler<DispatchException> handleDispatchException(DispatchCompletedService dispatchCompletedService) {
         return (payload, headers) -> {
             Message<DispatchCompletedMessage> failedMessage = (Message<DispatchCompletedMessage>) payload.getFailedMessage();
-            Throwable cause = payload.getCause();
+            Throwable cause = payload.getRootCause();
 
             dispatchCompletedService.setCompletionStatus(failedMessage.getPayload());
 
@@ -135,7 +138,7 @@ public class BasicFlowConfig {
                                         f -> f.<DispatchException, AbstractEventLogMessage>transform(
                                                 payload -> {
                                                     Message<DispatchCompletedMessage> failedMessage = (Message<DispatchCompletedMessage>) payload.getFailedMessage();
-                                                    Throwable cause = payload.getCause();
+                                                    Throwable cause = payload.getRootCause();
                                                     return EventLogMessageBuilder.eventLog(failedMessage.getPayload()).failedBySystem(cause.getMessage());
                                                 })
 
@@ -143,7 +146,7 @@ public class BasicFlowConfig {
 
                 )
                 .transform(Transformers.toJson())
-                .log(Level.DEBUG, BasicFlowConfig.class.getName())
+                .log(Level.INFO, BasicFlowConfig.class.getName())
                 .handle(Jms.outboundAdapter(connectionFactory).destination(activemqConfig.getJndi().getQueueEventLog()),
                         s -> s.advice(retryAdvice))
                 .get();
