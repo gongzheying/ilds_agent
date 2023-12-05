@@ -16,8 +16,6 @@ services:
   sftp1:
     image: atmoz/sftp
     container_name: sftp1
-    volumes:
-      - ${HOME}/.ssh/id_rsa.pub:/home/foo/.ssh/keys/id_rsa.pub:ro
     command: foo:password:1001::upload
     networks:
       backend:
@@ -27,8 +25,10 @@ services:
     image: atmoz/sftp
     container_name: sftp2
     volumes:
-      - ${HOME}/.ssh/id_rsa.pub:/home/foo/.ssh/keys/id_rsa.pub:ro
-    command: foo:password:1001::upload
+      - type: bind
+        source: ssh_host_rsa_key.pub
+        target: /home/foo/.ssh/keys/ssh_host_rsa_key.pub:ro
+    command: foo::1001::upload
     networks:
       backend:
         ipv4_address: 172.18.0.4

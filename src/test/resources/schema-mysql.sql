@@ -48,14 +48,17 @@ CREATE TABLE if not exists `tbl_ilds_transfer_file`
 
 CREATE TABLE if not exists `tbl_ilds_transfer_credentials`
 (
-    `id`                     bigint(20) NOT NULL AUTO_INCREMENT,
-    `created_at`             datetime     DEFAULT NULL,
-    `last_modified_at`       datetime     DEFAULT NULL,
-    `version`                bigint(20) NOT NULL,
-    `private_key_name`       varchar(255) DEFAULT NULL,
-    `private_key_passphrase` varchar(255) DEFAULT NULL,
-    `password`               varchar(255) DEFAULT NULL,
-    `title`                  varchar(255) DEFAULT NULL,
+    `id`                       bigint NOT NULL AUTO_INCREMENT,
+    `created_at`               datetime     DEFAULT NULL,
+    `last_modified_at`         datetime     DEFAULT NULL,
+    `version`                  bigint NOT NULL,
+    `private_key_name`         varchar(255) DEFAULT NULL,
+    `private_key_passphrase`   varchar(255) DEFAULT NULL,
+    `password`                 varchar(255) DEFAULT NULL,
+    `title`                    varchar(255) DEFAULT NULL,
+    `private_key_content`      blob,
+    `private_key_content_type` varchar(255) DEFAULT NULL,
+    `type`                     int          DEFAULT NULL,
     PRIMARY KEY (`id`)
 ) ENGINE = InnoDB;
 

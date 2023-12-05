@@ -10,13 +10,10 @@ import org.iata.ilds.agent.domain.entity.FileType;
 import org.iata.ilds.agent.domain.entity.TransferFile;
 import org.iata.ilds.agent.domain.entity.TransferPackage;
 import org.iata.ilds.agent.domain.entity.TransferStatus;
-import org.iata.ilds.agent.domain.message.DispatchCompletedMessage;
-import org.iata.ilds.agent.domain.message.inbound.InboundDispatchMessage;
 import org.iata.ilds.agent.domain.message.outbound.Address;
 import org.iata.ilds.agent.domain.message.outbound.Channel;
 import org.iata.ilds.agent.domain.message.outbound.OutboundDispatchMessage;
 import org.iata.ilds.agent.domain.message.outbound.RoutingFileInfo;
-import org.iata.ilds.agent.exception.DispatchException;
 import org.iata.ilds.agent.spring.data.TransferPackageRepository;
 import org.iata.ilds.agent.util.FileTrackingUtils;
 import org.junit.jupiter.api.Assertions;
@@ -26,11 +23,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.integration.support.MessageBuilder;
 import org.springframework.jms.core.JmsTemplate;
-import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.support.ErrorMessage;
 import org.springframework.test.context.ActiveProfiles;
 
 import javax.jms.ConnectionFactory;
@@ -113,20 +106,20 @@ public class OutboundDispatchConfigTests {
     private static Stream<Arguments> testOutboundDispatchFlow() {
 
         TransferPackage transferPackage = createTransferPackage();
-        OutboundDispatchMessage dispatchMessage = createOutboundDispatchMessage(transferPackage);
+        OutboundDispatchMessage dispatchMessage = createOutboundDispatchMessageByPassword(transferPackage);
 
         TransferPackage transferPackage2 = createTransferPackage();
-        OutboundDispatchMessage dispatchMessage2 = createWrongOutboundDispatchMessage(transferPackage2);
+        OutboundDispatchMessage dispatchMessage2 = createOutboundDispatchMessageByKeyAndPassphrase(transferPackage2);
 
         return Stream.of(
                 Arguments.of(TransferStatus.Sent, dispatchMessage, transferPackage),
-                Arguments.of(TransferStatus.Failed, dispatchMessage2, transferPackage2)
+                Arguments.of(TransferStatus.Sent, dispatchMessage2, transferPackage2)
         );
 
     }
 
 
-    private static OutboundDispatchMessage createOutboundDispatchMessage(TransferPackage transferPackage) {
+    private static OutboundDispatchMessage createOutboundDispatchMessageByPassword(TransferPackage transferPackage) {
         OutboundDispatchMessage dispatchMessage = new OutboundDispatchMessage();
         dispatchMessage.setProcessingStartTime(System.currentTimeMillis());
         dispatchMessage.setTrackingId(transferPackage.getPackageName());
@@ -146,7 +139,7 @@ public class OutboundDispatchConfigTests {
         return dispatchMessage;
     }
 
-    private static OutboundDispatchMessage createWrongOutboundDispatchMessage(TransferPackage transferPackage) {
+    private static OutboundDispatchMessage createOutboundDispatchMessageByKeyAndPassphrase(TransferPackage transferPackage) {
         OutboundDispatchMessage dispatchMessage = new OutboundDispatchMessage();
         dispatchMessage.setProcessingStartTime(System.currentTimeMillis());
         dispatchMessage.setTrackingId(transferPackage.getPackageName());
@@ -156,7 +149,7 @@ public class OutboundDispatchConfigTests {
         Channel channel = new Channel();
         Address address = new Address();
         address.setIp("172.18.0.4");
-        address.setPort(2222);
+        address.setPort(22);
         address.setPath("/upload");
         address.setUser("foo");
         channel.setAddress(address);
@@ -176,7 +169,7 @@ public class OutboundDispatchConfigTests {
         Channel channel = new Channel();
         Address address = new Address();
         address.setIp("172.18.0.5");
-        address.setPort(2222);
+        address.setPort(22);
         address.setPath("/upload");
         address.setUser("foo");
         channel.setAddress(address);
