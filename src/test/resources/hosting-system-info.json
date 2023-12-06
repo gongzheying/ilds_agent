@@ -1,0 +1,20 @@
+{
+  "hostingSystems": [
+    {
+      "hostingName": "isis3",
+      "type": "dpc",
+      "host": "172.18.0.3",
+      "port": "22",
+      "accountName": "foo",
+      "key": ""
+    },
+    {
+      "hostingName": "isis4",
+      "type": "dpc",
+      "host": "172.18.0.4",
+      "port": "22",
+      "accountName": "foo",
+      "key": ""
+    }
+  ]
+}

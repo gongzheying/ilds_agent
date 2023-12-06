@@ -4,11 +4,12 @@ import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.SftpException;
 import lombok.extern.log4j.Log4j2;
 import org.iata.ilds.agent.config.activemq.ActivemqConfigProperties;
-import org.iata.ilds.agent.config.inbound.HostingSystemProperties;
+import org.iata.ilds.agent.config.inbound.HostingSystemLookup;
 import org.iata.ilds.agent.domain.builder.DispatchCompletedMessageBuilder;
 import org.iata.ilds.agent.domain.entity.TransferPackage;
 import org.iata.ilds.agent.domain.entity.TransferSite;
 import org.iata.ilds.agent.domain.message.DispatchCompletedMessage;
+import org.iata.ilds.agent.domain.message.inbound.HostingSystem;
 import org.iata.ilds.agent.domain.message.inbound.InboundDispatchMessage;
 
 import org.iata.ilds.agent.exception.DispatchException;
@@ -37,7 +38,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.function.Function;
 
-import static org.iata.ilds.agent.config.inbound.HostingSystemProperties.HostingSystem;
 
 @Log4j2
 @Configuration
@@ -47,7 +47,7 @@ public class InboundDispatchConfig {
     @Bean
     public IntegrationFlow inboundDispatchFlow(ConnectionFactory connectionFactory,
                                                ActivemqConfigProperties activemqConfig,
-                                               HostingSystemProperties hostingConfig,
+                                               HostingSystemLookup hostingSystemLookup,
                                                TransferPackageRepository transferPackageRepository,
                                                TransferSiteRepository transferSiteRepository,
                                                DelegatingSessionFactory<ChannelSftp.LsEntry> delegatingSessionFactory,
@@ -59,10 +59,10 @@ public class InboundDispatchConfig {
                 .transform(Transformers.fromJson(InboundDispatchMessage.class))
                 .wireTap("eventLogChannel")
                 .enrichHeaders(
-                        s -> s.headerFunction("TransferSite", headerValueOfTransferSite(transferSiteRepository, hostingConfig))
+                        s -> s.headerFunction("TransferSite", headerValueOfTransferSite(transferSiteRepository, hostingSystemLookup))
                                 .headerFunction("TransferPackage", headerValueOfTransferPackage(transferPackageRepository))
                 )
-                .filter(filterInboundDispatchMessage(hostingConfig))
+                .filter(filterInboundDispatchMessage(hostingSystemLookup))
                 .handle(dispatchInboundDataFiles(delegatingSessionFactory, retryTemplate))
                 .handle(dispatchInboundCompleted(dispatchCompletedService))
                 .wireTap("eventLogChannel")
@@ -77,12 +77,12 @@ public class InboundDispatchConfig {
     }
 
     private Function<Message<InboundDispatchMessage>, TransferSite> headerValueOfTransferSite(TransferSiteRepository transferSiteRepository,
-                                                                                              HostingSystemProperties hostingConfig) {
+                                                                                              HostingSystemLookup hostingSystemLookup) {
         return message -> {
             InboundDispatchMessage inboundDispatchMessage = message.getPayload();
             String destination = inboundDispatchMessage.getDestination();
-            if (hostingConfig.getSystem().containsKey(destination)) {
-                HostingSystem hostingSystem = hostingConfig.getSystem().get(destination);
+            HostingSystem hostingSystem = hostingSystemLookup.getHostingSystem(destination);
+            if (hostingSystem != null) {
                 Path originalFilePath = Paths.get(inboundDispatchMessage.getOriginalFilePath());
                 return transferSiteRepository.findByUsernameAndIpAndPortAndRemotePath(
                         hostingSystem.getAccountName(),
@@ -95,7 +95,7 @@ public class InboundDispatchConfig {
         };
     }
 
-    private MessageSelector filterInboundDispatchMessage(HostingSystemProperties hostingConfig) {
+    private MessageSelector filterInboundDispatchMessage(HostingSystemLookup hostingSystemLookup) {
         return message -> {
             InboundDispatchMessage payload = (InboundDispatchMessage) message.getPayload();
             TransferPackage transferPackage = message.getHeaders().get("TransferPackage", TransferPackage.class);
@@ -107,8 +107,8 @@ public class InboundDispatchConfig {
             }
 
             if (transferSite == null) {
-                if (hostingConfig.getSystem().containsKey(payload.getDestination())) {
-                    HostingSystem hostingSystem = hostingConfig.getSystem().get(payload.getDestination());
+                HostingSystem hostingSystem = hostingSystemLookup.getHostingSystem(payload.getDestination());
+                if (hostingSystem != null) {
                     Path originalFilePath = Paths.get(payload.getOriginalFilePath());
                     log.error("The TransferSite \"{}\" is not registered in the system.",
                             String.format("%s@%s:%d:%s",

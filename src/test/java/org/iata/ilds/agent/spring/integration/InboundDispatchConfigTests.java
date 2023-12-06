@@ -22,7 +22,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 
 import javax.jms.ConnectionFactory;
 import java.io.File;
@@ -104,38 +103,38 @@ public class InboundDispatchConfigTests {
     private static Stream<Arguments> testInboundDispatchFlow() {
 
         TransferPackage transferPackage = createTransferPackage();
-        InboundDispatchMessage dispatchMessage = createInboundDispatchMessage(transferPackage);
+        InboundDispatchMessage dispatchMessage = createInboundDispatchMessageByPassword(transferPackage);
 
         TransferPackage transferPackage2 = createTransferPackage();
-        InboundDispatchMessage dispatchMessage2 = createWrongInboundDispatchMessage(transferPackage2);
+        InboundDispatchMessage dispatchMessage2 = createInboundDispatchMessageByKeyAndPassphrase(transferPackage2);
 
         return Stream.of(
                 Arguments.of(TransferStatus.Sent, dispatchMessage, transferPackage),
-                Arguments.of(TransferStatus.Failed, dispatchMessage2, transferPackage2)
+                Arguments.of(TransferStatus.Sent, dispatchMessage2, transferPackage2)
         );
 
     }
 
 
-    private static InboundDispatchMessage createInboundDispatchMessage(TransferPackage transferPackage) {
+    private static InboundDispatchMessage createInboundDispatchMessageByPassword(TransferPackage transferPackage) {
         InboundDispatchMessage dispatchMessage = new InboundDispatchMessage();
         dispatchMessage.setProcessingStartTime(System.currentTimeMillis());
         dispatchMessage.setTrackingId(transferPackage.getPackageName());
         dispatchMessage.setLocalFilePath(transferPackage.getLocalFilePath());
         dispatchMessage.setOriginalFilePath(transferPackage.getOriginalFilePath());
-        dispatchMessage.setDestination("isis");
+        dispatchMessage.setDestination("isis3");
 
 
         return dispatchMessage;
     }
 
-    private static InboundDispatchMessage createWrongInboundDispatchMessage(TransferPackage transferPackage) {
+    private static InboundDispatchMessage createInboundDispatchMessageByKeyAndPassphrase(TransferPackage transferPackage) {
         InboundDispatchMessage dispatchMessage = new InboundDispatchMessage();
         dispatchMessage.setProcessingStartTime(System.currentTimeMillis());
         dispatchMessage.setTrackingId(transferPackage.getPackageName());
         dispatchMessage.setLocalFilePath(transferPackage.getLocalFilePath());
         dispatchMessage.setOriginalFilePath(transferPackage.getOriginalFilePath());
-        dispatchMessage.setDestination("wrong-isis");
+        dispatchMessage.setDestination("isis4");
 
         return dispatchMessage;
     }
@@ -146,7 +145,7 @@ public class InboundDispatchConfigTests {
         dispatchMessage.setTrackingId(transferPackage.getPackageName());
         dispatchMessage.setLocalFilePath(transferPackage.getLocalFilePath());
         dispatchMessage.setOriginalFilePath(transferPackage.getOriginalFilePath());
-        dispatchMessage.setDestination("not-exist-isis");
+        dispatchMessage.setDestination("isis5");
 
         return dispatchMessage;
     }

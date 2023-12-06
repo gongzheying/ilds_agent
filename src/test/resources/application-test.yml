@@ -1,37 +1,29 @@
 spring:
-    datasource:
-        driver-class-name: com.mysql.cj.jdbc.Driver
-        hikari:
-            maximum-pool-size: 30
-            minimum-idle: 5
-        password: 123456
-        url: jdbc:mysql://172.18.0.2:3306/ildsdb
-        username: root
-    jpa:
-        defer-datasource-initialization: true
-    sql:
-        init:
-            mode: always
-            platform: mysql
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 30
+      minimum-idle: 5
+    password: 123456
+    url: jdbc:mysql://172.18.0.2:3306/ildsdb
+    username: root
+  jpa:
+    defer-datasource-initialization: true
+  sql:
+    init:
+      mode: always
+      platform: mysql
 
-hosting:
-    system:
-        isis:
-            host: 172.18.0.3
-            port: 22
-            accountName: foo
-        wrong-isis:
-            host: 172.18.0.4
-            port: 2222
-            accountName: foo
-
+inbound:
+  hostingSystemInfo:
+    path: classpath:hosting-system-info.json
 
 logging:
-    level:
-        org:
-            iata:
-                ilds:
-                    agent: debug
+  level:
+    org:
+      iata:
+        ilds:
+          agent: debug
 
 
 
