@@ -92,6 +92,7 @@ public class OutboundDispatchConfigTests {
         try {
             JmsTemplate jmsTemplate = new JmsTemplate(connectionFactory);
             jmsTemplate.convertAndSend(config.getJndi().getQueueOutboundDispatch(), objectMapper.writeValueAsString(outboundDispatchMessage));
+            log.info("An outboundDispatchMessage has been sent");
         } catch (JsonProcessingException e) {
             Assertions.fail("JSON serialization failed", e);
         }

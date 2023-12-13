@@ -22,6 +22,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.core.MessageSelector;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
+import org.springframework.integration.dsl.MessageChannels;
 import org.springframework.integration.dsl.Transformers;
 import org.springframework.integration.file.remote.ClientCallback;
 import org.springframework.integration.file.remote.session.DelegatingSessionFactory;
@@ -29,6 +30,7 @@ import org.springframework.integration.handler.GenericHandler;
 import org.springframework.integration.jms.dsl.Jms;
 import org.springframework.integration.sftp.session.SftpRemoteFileTemplate;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.retry.support.RetryTemplate;
@@ -40,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -49,19 +52,30 @@ import java.util.stream.Stream;
 @Configuration
 public class OutboundDispatchConfig {
 
+    @Bean
+    public MessageChannel outboundDispatchChannel() {
+        return MessageChannels.executor("outboundDispatchExecutor", Executors.newFixedThreadPool(10)).get();
+        //return MessageChannels.direct().get();
+    }
 
     @Bean
-    public IntegrationFlow outboundDispatchFlow(ConnectionFactory connectionFactory,
-                                                ActivemqConfigProperties activemqConfig,
-                                                TransferPackageRepository transferPackageRepository,
+    public IntegrationFlow outboundDispatchJmsFlow(ConnectionFactory connectionFactory,
+                                                   ActivemqConfigProperties activemqConfig) {
+        return IntegrationFlows
+                .from(Jms.messageDrivenChannelAdapter(connectionFactory)
+                        .destination(activemqConfig.getJndi().getQueueOutboundDispatch()))
+                .channel("outboundDispatchChannel")
+                .get();
+    }
+
+    @Bean
+    public IntegrationFlow outboundDispatchFlow(TransferPackageRepository transferPackageRepository,
                                                 TransferSiteRepository transferSiteRepository,
                                                 DelegatingSessionFactory<ChannelSftp.LsEntry> delegatingSessionFactory,
                                                 RetryTemplate retryTemplate,
                                                 FileService fileService,
                                                 DispatchCompletedService dispatchCompletedService) {
-        return IntegrationFlows.from(
-                        Jms.inboundAdapter(connectionFactory).destination(activemqConfig.getJndi().getQueueOutboundDispatch()),
-                        s -> s.poller(p -> p.cron("0 0/1 * * * *").maxMessagesPerPoll(10)))
+        return IntegrationFlows.from("outboundDispatchChannel")
                 .transform(Transformers.fromJson(OutboundDispatchMessage.class))
                 .wireTap("eventLogChannel")
                 .enrichHeaders(
