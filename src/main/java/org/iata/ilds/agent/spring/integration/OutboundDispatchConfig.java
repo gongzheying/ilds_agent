@@ -22,15 +22,14 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.core.MessageSelector;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
-import org.springframework.integration.dsl.MessageChannels;
 import org.springframework.integration.dsl.Transformers;
 import org.springframework.integration.file.remote.ClientCallback;
 import org.springframework.integration.file.remote.session.DelegatingSessionFactory;
 import org.springframework.integration.handler.GenericHandler;
+import org.springframework.integration.handler.LoggingHandler;
 import org.springframework.integration.jms.dsl.Jms;
 import org.springframework.integration.sftp.session.SftpRemoteFileTemplate;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.retry.support.RetryTemplate;
@@ -42,7 +41,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -53,29 +51,20 @@ import java.util.stream.Stream;
 public class OutboundDispatchConfig {
 
     @Bean
-    public MessageChannel outboundDispatchChannel() {
-        return MessageChannels.executor("outboundDispatchExecutor", Executors.newFixedThreadPool(10)).get();
-        //return MessageChannels.direct().get();
-    }
-
-    @Bean
-    public IntegrationFlow outboundDispatchJmsFlow(ConnectionFactory connectionFactory,
-                                                   ActivemqConfigProperties activemqConfig) {
-        return IntegrationFlows
-                .from(Jms.messageDrivenChannelAdapter(connectionFactory)
-                        .destination(activemqConfig.getJndi().getQueueOutboundDispatch()))
-                .channel("outboundDispatchChannel")
-                .get();
-    }
-
-    @Bean
-    public IntegrationFlow outboundDispatchFlow(TransferPackageRepository transferPackageRepository,
+    public IntegrationFlow outboundDispatchFlow(ConnectionFactory connectionFactory,
+                                                ActivemqConfigProperties activemqConfig,
+                                                TransferPackageRepository transferPackageRepository,
                                                 TransferSiteRepository transferSiteRepository,
                                                 DelegatingSessionFactory<ChannelSftp.LsEntry> delegatingSessionFactory,
                                                 RetryTemplate retryTemplate,
                                                 FileService fileService,
                                                 DispatchCompletedService dispatchCompletedService) {
-        return IntegrationFlows.from("outboundDispatchChannel")
+        return IntegrationFlows.from(
+                        Jms.messageDrivenChannelAdapter(connectionFactory).
+                                destination(activemqConfig.getJndi().getQueueOutboundDispatch()).
+                                configureListenerContainer(s -> s.id("outboundPool").concurrentConsumers(1).maxConcurrentConsumers(10).maxMessagesPerTask(10))
+                )
+                .log(LoggingHandler.Level.INFO, OutboundDispatchConfig.class.getName(), message -> String.format("received jms_messageId=%s", message.getHeaders().get("jms_messageId")))
                 .transform(Transformers.fromJson(OutboundDispatchMessage.class))
                 .wireTap("eventLogChannel")
                 .enrichHeaders(
@@ -88,7 +77,6 @@ public class OutboundDispatchConfig {
                 .wireTap("eventLogChannel")
                 .get();
     }
-
 
     private Function<Message<OutboundDispatchMessage>, TransferPackage> headerValueOfTransferPackage(TransferPackageRepository transferPackageRepository) {
         return message -> {

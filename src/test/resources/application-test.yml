@@ -24,6 +24,8 @@ logging:
       iata:
         ilds:
           agent: debug
-
+      springframework:
+        integration:
+          endpoint: debug
 
 

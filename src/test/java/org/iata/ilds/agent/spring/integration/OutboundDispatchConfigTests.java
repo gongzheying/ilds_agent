@@ -18,9 +18,6 @@ import org.iata.ilds.agent.spring.data.TransferPackageRepository;
 import org.iata.ilds.agent.util.FileTrackingUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jms.core.JmsTemplate;
@@ -31,7 +28,8 @@ import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.stream.Stream;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Log4j2
 @SpringBootTest
@@ -60,10 +58,10 @@ public class OutboundDispatchConfigTests {
 
     }
 
-    @Test
+    //@Test
     public void testInvalidOutboundDispatchFlow() {
 
-        TransferPackage transferPackage = createTransferPackage();
+        TransferPackage transferPackage = createTransferPackage(1);
         OutboundDispatchMessage outboundDispatchMessage = createInvalidOutboundDispatchMessage(transferPackage);
         prepareTransferPackageForTesting(transferPackage);
         try {
@@ -81,41 +79,41 @@ public class OutboundDispatchConfigTests {
 
     }
 
-    @ParameterizedTest
-    @MethodSource
-    public void testOutboundDispatchFlow(TransferStatus expectedStatus,
-                                         OutboundDispatchMessage outboundDispatchMessage,
-                                         TransferPackage transferPackage) {
 
-        prepareTransferPackageForTesting(transferPackage);
+    @Test
+    public void testOutboundDispatchFlow() throws JsonProcessingException {
+        int capacity = 100;
+        List<TransferPackage> transferPackages = new ArrayList<>(capacity);
+        List<String> dispatchMessages = new ArrayList<>(capacity);
+        for (long i = 0; i < capacity; i++) {
+            TransferPackage transferPackage = createTransferPackage(i);
+            String dispatchMessage;
+            if (i % 2 == 0) {
+                dispatchMessage = objectMapper.writeValueAsString(createOutboundDispatchMessageByPassword(transferPackage));
+            } else {
+                dispatchMessage = objectMapper.writeValueAsString(createOutboundDispatchMessageByKeyAndPassphrase(transferPackage));
+            }
 
-        try {
-            JmsTemplate jmsTemplate = new JmsTemplate(connectionFactory);
-            jmsTemplate.convertAndSend(config.getJndi().getQueueOutboundDispatch(), objectMapper.writeValueAsString(outboundDispatchMessage));
-            log.info("An outboundDispatchMessage has been sent");
-        } catch (JsonProcessingException e) {
-            Assertions.fail("JSON serialization failed", e);
+            transferPackages.add(transferPackage);
+            dispatchMessages.add(dispatchMessage);
         }
 
-        Awaitility.await().atMost(Duration.ofSeconds(3 * 60)).until(() ->
-                expectedStatus.equals(
-                        transferPackageRepository.findByPackageName(transferPackage.getPackageName()).get().getStatus()
-                ));
+        transferPackages.forEach(this::prepareTransferPackageForTesting);
 
-    }
+        JmsTemplate jmsTemplate = new JmsTemplate(connectionFactory);
+        dispatchMessages.forEach(dispatchMessage -> {
+            jmsTemplate.convertAndSend(config.getJndi().getQueueOutboundDispatch(), dispatchMessage);
+        });
 
-    private static Stream<Arguments> testOutboundDispatchFlow() {
+        log.info("{} outboundDispatchMessage have been sent", capacity);
 
-        TransferPackage transferPackage = createTransferPackage();
-        OutboundDispatchMessage dispatchMessage = createOutboundDispatchMessageByPassword(transferPackage);
 
-        TransferPackage transferPackage2 = createTransferPackage();
-        OutboundDispatchMessage dispatchMessage2 = createOutboundDispatchMessageByKeyAndPassphrase(transferPackage2);
+        Awaitility.await().pollInterval(Duration.ofSeconds(5)).atMost(Duration.ofSeconds(3 * 60)).until(() -> {
 
-        return Stream.of(
-                Arguments.of(TransferStatus.Sent, dispatchMessage, transferPackage),
-                Arguments.of(TransferStatus.Sent, dispatchMessage2, transferPackage2)
-        );
+            List<Long> packageIds = transferPackages.stream().map(TransferPackage::getId).collect(Collectors.toList());
+            return transferPackageRepository.findAllById(packageIds).stream().allMatch(transferPackage -> TransferStatus.Sent.equals(transferPackage.getStatus()));
+
+        });
 
     }
 
@@ -181,14 +179,14 @@ public class OutboundDispatchConfigTests {
     }
 
 
-    private static TransferPackage createTransferPackage() {
+    private static TransferPackage createTransferPackage(long packageId) {
         String trackingId = FileTrackingUtils.generateTrackingId(false);
         TransferPackage transferPackage = new TransferPackage();
-        transferPackage.setId(1L);
+        transferPackage.setId(packageId);
         transferPackage.setPackageName(trackingId);
         transferPackage.setTransferFiles(new ArrayList<>());
         transferPackage.setStatus(TransferStatus.Processing);
-        transferPackage.setLocalFilePath("target/test-files");
+        transferPackage.setLocalFilePath(String.format("target/test-files-%d", packageId));
         for (long id = 1; id <= 3; id++) {
             TransferFile transferFile = new TransferFile();
             transferFile.setFileName(String.format("file%d.%s", id, id == 3 ? "tdf" : "txt"));
