@@ -5,6 +5,7 @@ import lombok.extern.log4j.Log4j2;
 import org.iata.ilds.agent.domain.entity.TransferSite;
 import org.iata.ilds.agent.domain.entity.TransferSiteCredentialType;
 import org.iata.ilds.agent.spring.data.TransferSiteRepository;
+import org.iata.ilds.agent.util.AESUtility;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.integration.file.remote.session.SessionFactory;
 import org.springframework.integration.file.remote.session.SessionFactoryLocator;
@@ -56,13 +57,13 @@ public class DBSessionFactoryLocator implements SessionFactoryLocator<ChannelSft
         config.put("StrictHostKeyChecking", "no");
         sftpSessionFactory.setSessionConfig(config);
 
-        if (TransferSiteCredentialType.PasswordOnly.equals(transferSite.getCredentialType())) {
-            sftpSessionFactory.setPassword(transferSite.getCredential().getPassword());
-        } else if (TransferSiteCredentialType.SSHKeyOnly.equals(transferSite.getCredentialType())) {
+        if (TransferSiteCredentialType.PasswordOnly.equals(transferSite.getCredential().getType())) {
+            sftpSessionFactory.setPassword(AESUtility.decrypt(transferSite.getCredential().getPassword()));
+        } else if (TransferSiteCredentialType.SSHKeyOnly.equals(transferSite.getCredential().getType())) {
             sftpSessionFactory.setPrivateKey(new ByteArrayResource(transferSite.getCredential().getPrivateKeyContent()));
-        } else if (TransferSiteCredentialType.PasswordAndSSHKey.equals(transferSite.getCredentialType())) {
+        } else if (TransferSiteCredentialType.PasswordAndSSHKey.equals(transferSite.getCredential().getType())) {
             sftpSessionFactory.setPrivateKey(new ByteArrayResource(transferSite.getCredential().getPrivateKeyContent()));
-            sftpSessionFactory.setPrivateKeyPassphrase(transferSite.getCredential().getPrivateKeyPassphrase());
+            sftpSessionFactory.setPrivateKeyPassphrase(AESUtility.decrypt(transferSite.getCredential().getPrivateKeyPassphrase()));
         }
 
         log.info("Using the credential(id={},type={}) for site {}@{}:{}:{}",
