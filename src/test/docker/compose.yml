@@ -33,6 +33,16 @@ services:
       backend:
         ipv4_address: 172.18.0.4
 
+  eap73:
+    container_name: eap73
+    build:
+      context: .
+      dockerfile: Dockerfile
+    networks:
+      backend:
+        ipv4_address: 172.18.0.5
+
+
 networks:
   backend:
     ipam:
