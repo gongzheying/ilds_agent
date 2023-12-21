@@ -25,10 +25,17 @@ spring:
     url: jdbc:mysql://127.0.0.1:3306/ildsdb
     username: root
 
+  outboundFlow:
+    concurrentConsumers: 20
+    maxConcurrentConsumers: 20
+    maxMessagesPerTask: 10
+
 logging:
   file:
     name: logs/ilds_agent.log
   level:
     root: info
-
-
+    org:
+      springframework:
+        integration:
+          jms: debug
