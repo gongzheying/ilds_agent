@@ -12,6 +12,8 @@ import org.iata.ilds.agent.domain.message.outbound.OutboundDispatchMessage;
 import org.iata.ilds.agent.util.FileTrackingUtils;
 
 import java.nio.file.Paths;
+import java.time.DateTimeException;
+import java.util.Date;
 
 import static org.iata.ilds.agent.domain.message.eventlog.AbstractEventLogMessage.CallingProcess.INBOUND_DISPATCH;
 import static org.iata.ilds.agent.domain.message.eventlog.AbstractEventLogMessage.CallingProcess.OUTBOUND_DISPATCH;
@@ -39,6 +41,7 @@ public final class EventLogMessageBuilder {
         }
         eventLogMessage.setCallingProcess(callingProcess);
         eventLogMessage.setClassName("ProcessingBaseEventLogMessage");
+        eventLogMessage.setTimestamp(new Date());
         return eventLogMessage;
     }
 
@@ -70,6 +73,8 @@ public final class EventLogMessageBuilder {
         eventLogMessage.setProcessingStartTime(message.getProcessingStartTime());
         eventLogMessage.setProcessingInterval(System.currentTimeMillis() - eventLogMessage.getProcessingStartTime() );
         eventLogMessage.setClassName("ProcessingTimeEventLogMessage");
+        eventLogMessage.setTransferMethod("SFTP");
+        eventLogMessage.setTimestamp(new Date());
 
         return new EventLogMessageBuilder(eventLogMessage);
     }

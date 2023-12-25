@@ -126,7 +126,7 @@ public class BasicFlowConfig {
                                 .subFlowMapping(
                                         OutboundDispatchMessage.class,
                                         f -> f.<OutboundDispatchMessage, AbstractEventLogMessage>transform(
-                                                payload -> EventLogMessageBuilder.eventLog(payload).completed())
+                                                payload -> EventLogMessageBuilder.eventLog(payload).started())
                                 )
                                 .subFlowMapping(
                                         DispatchCompletedMessage.class,

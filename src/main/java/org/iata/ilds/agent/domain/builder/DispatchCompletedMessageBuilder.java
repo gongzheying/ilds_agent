@@ -30,8 +30,8 @@ public final class DispatchCompletedMessageBuilder {
         instance.dispatchCompletedMessage.setOriginalFilePath(message.getOriginalFilePath());
         instance.dispatchCompletedMessage.setOriginalFileSize(message.getOriginalFileSize());
         instance.dispatchCompletedMessage.setBsp(message.getBsp());
-        instance.dispatchCompletedMessage.setSender(N_A);
-        instance.dispatchCompletedMessage.setDestination(HOSTING);
+        instance.dispatchCompletedMessage.setSender(message.getSender());
+        instance.dispatchCompletedMessage.setDestination(message.getDestination());
         instance.dispatchCompletedMessage.setSuccessful(true);
         return instance;
     }
@@ -45,8 +45,8 @@ public final class DispatchCompletedMessageBuilder {
         instance.dispatchCompletedMessage.setOriginalFileName(message.getOriginalFileName());
         instance.dispatchCompletedMessage.setOriginalFilePath(message.getOriginalFilePath());
         instance.dispatchCompletedMessage.setOriginalFileSize(message.getOriginalFileSize());
-        instance.dispatchCompletedMessage.setSender(HOSTING);
-        instance.dispatchCompletedMessage.setDestination(Paths.get(message.getLocalFilePath()).getParent().toString());
+        instance.dispatchCompletedMessage.setSender(message.getSender());
+        instance.dispatchCompletedMessage.setDestination(message.getDestination());
         instance.dispatchCompletedMessage.setBsp(message.getBsp());
         instance.dispatchCompletedMessage.setSuccessful(true);
         return instance;

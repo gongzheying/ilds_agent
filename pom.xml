@@ -114,7 +114,7 @@
                     <includeAdditionalProperties>false</includeAdditionalProperties>
                     <includeToString>false</includeToString>
                     <includeHashcodeAndEquals>false</includeHashcodeAndEquals>
-                    <customDateTimePattern>yyyy-MM-dd'T'HH:mm:ss.SSS</customDateTimePattern>
+                    <customDateTimePattern>yyyy-MM-dd'T'HH:mm:ssZ</customDateTimePattern>
                     <usePrimitives>true</usePrimitives>
                     <formatTypeMapping>
                         <int64>java.lang.Long</int64>
