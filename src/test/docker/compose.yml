@@ -1,6 +1,7 @@
 services:
   mysql1:
     image: mysql:8
+    hostname: mysql1
     container_name: mysql1
     # NOTE: use of "mysql_native_password" is not recommended: https://dev.mysql.com/doc/refman/8.0/en/upgrading-from-previous-series.html#upgrade-caching-sha2-password
     # (this is just an example, not intended to be a production configuration)
@@ -15,6 +16,7 @@ services:
 
   sftp1:
     image: atmoz/sftp
+    hostname: sftp1
     container_name: sftp1
     command: foo:password:1001::upload
     networks:
@@ -23,6 +25,7 @@ services:
 
   sftp2:
     image: atmoz/sftp
+    hostname: sftp2
     container_name: sftp2
     volumes:
       - type: bind
@@ -34,6 +37,7 @@ services:
         ipv4_address: 172.18.0.4
 
   eap73:
+    hostname: eap73
     container_name: eap73
     build:
       context: .

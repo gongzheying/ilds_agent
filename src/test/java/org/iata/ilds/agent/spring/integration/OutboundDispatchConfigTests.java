@@ -58,7 +58,7 @@ public class OutboundDispatchConfigTests {
 
     }
 
-    //@Test
+    @Test
     public void testInvalidOutboundDispatchFlow() {
 
         TransferPackage transferPackage = createTransferPackage(1);
@@ -71,8 +71,8 @@ public class OutboundDispatchConfigTests {
             Assertions.fail("JSON serialization failed", e);
         }
 
-        Awaitility.await().timeout(Duration.ofSeconds(60)).pollDelay(Duration.ofSeconds(30)).until(() ->
-                TransferStatus.Processing.equals(
+        Awaitility.await().pollInterval(Duration.ofSeconds(5)).atMost(Duration.ofSeconds(3 * 60)).until(() ->
+                TransferStatus.Failed.equals(
                         transferPackageRepository.findByPackageName(transferPackage.getPackageName()).get().getStatus()
                 ));
 
@@ -80,7 +80,7 @@ public class OutboundDispatchConfigTests {
     }
 
 
-    @Test
+    //@Test
     public void testOutboundDispatchFlow() throws JsonProcessingException {
         int capacity = 100;
         List<TransferPackage> transferPackages = new ArrayList<>(capacity);

@@ -2,8 +2,8 @@ activemq:
   ctx:
     initialContextFactory: org.wildfly.naming.client.WildFlyInitialContextFactory
     provideUrl: http-remoting://172.18.0.5:8080
-    securityCredentials: jmsuser
-    securityPrincipal: 1
+    securityCredentials: 1
+    securityPrincipal: jmsuser
 
 spring:
   datasource:
@@ -33,6 +33,6 @@ logging:
           agent: debug
       springframework:
         integration:
-          endpoint: debug
-
-
+          jms: debug
+        jms:
+          core: debug

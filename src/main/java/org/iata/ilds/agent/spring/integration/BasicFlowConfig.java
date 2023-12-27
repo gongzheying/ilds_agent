@@ -26,8 +26,6 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.retry.support.RetryTemplate;
 
 import javax.jms.ConnectionFactory;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 
 import static org.springframework.integration.handler.LoggingHandler.Level;
 
@@ -93,6 +91,7 @@ public class BasicFlowConfig {
                 .wireTap("eventLogChannel")
                 .handle(handleDispatchException(dispatchCompletedService))
                 .transform(Transformers.toJson())
+                .log(Level.INFO, BasicFlowConfig.class.getName())
                 .handle(Jms.outboundAdapter(connectionFactory).destination(activemqConfig.getJndi().getQueueQuarantine()),
                         s -> s.advice(retryAdvice))
                 .get();

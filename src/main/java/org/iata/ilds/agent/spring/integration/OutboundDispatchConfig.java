@@ -34,14 +34,13 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.retry.support.RetryTemplate;
-import org.springframework.util.StringUtils;
 
 import javax.jms.ConnectionFactory;
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -83,6 +82,7 @@ public class OutboundDispatchConfig {
                 )
                 .filter(filterOutboundDispatchMessage())
                 .handle(dispatchOutboundDataFiles(delegatingSessionFactory, retryTemplate, fileService))
+                .routeToRecipients(r ->  r.recipient("errorChannel", s -> s instanceof DispatchException).defaultOutputToParentFlow())
                 .handle(dispatchOutboundCompleted(dispatchCompletedService))
                 .wireTap("eventLogChannel")
                 .get();
@@ -159,15 +159,15 @@ public class OutboundDispatchConfig {
 
             DispatchCompletedMessageBuilder completedMessageBuilder = DispatchCompletedMessageBuilder.dispatchCompletedMessage(payload);
 
+            AtomicInteger processedCounter = new AtomicInteger();
 
             try {
 
                 delegatingSessionFactory.setThreadKey(transferSite.getId());
                 SftpRemoteFileTemplate remoteFileTemplate = new SftpRemoteFileTemplate(delegatingSessionFactory);
 
-                List<String> processedDataFiles = retryTemplate.<List<String>, MessagingException>execute(ctx -> remoteFileTemplate.executeWithClient(
-                        (ClientCallback<ChannelSftp, List<String>>) client -> {
-                            List<String> fileSentOutList = new ArrayList<>();
+                retryTemplate.<Boolean, MessagingException>execute(ctx -> remoteFileTemplate.executeWithClient(
+                        (ClientCallback<ChannelSftp, Boolean>) client -> {
                             dataFiles.forEach(file -> {
                                 String remotePath = transferSite.getRemotePath();
                                 try {
@@ -175,29 +175,21 @@ public class OutboundDispatchConfig {
                                 } catch (SftpException e) {
                                     throw new MessagingException(String.format("An error occurred while uploading file %s", file.getAbsolutePath()), e);
                                 }
-
-                                fileSentOutList.add(file.getAbsolutePath());
+                                completedMessageBuilder.addFailedDataFile(file.getAbsolutePath());
+                                processedCounter.incrementAndGet();
                             });
-
-
-
-                            return fileSentOutList;
+                            return null; //nothing is useful here
                         }
                 ));
-
-                processedDataFiles.forEach(completedMessageBuilder::addProcessedDataFile);
 
                 return completedMessageBuilder.build();
             } catch (MessagingException e) {
 
                 log.error("Failed while dispatching outbound data files", e.getCause());
 
-                if (e.getCause() instanceof SftpException) {
-                    completedMessageBuilder.addFailedDataFile(StringUtils.replace(e.getMessage(), "An error occurred while uploading file ", ""));
-                } else { //failed to create SFTP Session
-                    completedMessageBuilder.addFailedDataFile(dataFiles.get(0).getAbsolutePath());
-                }
-                throw new DispatchException(MessageBuilder.withPayload(completedMessageBuilder.build()).build(), e.getCause());
+                completedMessageBuilder.addFailedDataFile(dataFiles.get(processedCounter.get()).getAbsolutePath());
+
+                return new DispatchException(MessageBuilder.withPayload(completedMessageBuilder.build()).build(), e.getCause());
             }
 
 
