@@ -25,6 +25,11 @@ inbound:
   hostingSystemInfo:
     path: classpath:hosting-system-info.json
 
+outboundFlow:
+  concurrentConsumers: 2
+  maxConcurrentConsumers: 2
+  maxMessagesPerTask: 5
+
 logging:
   level:
     org:

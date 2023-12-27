@@ -80,7 +80,7 @@ public class OutboundDispatchConfigTests {
     }
 
 
-    //@Test
+    @Test
     public void testOutboundDispatchFlow() throws JsonProcessingException {
         int capacity = 100;
         List<TransferPackage> transferPackages = new ArrayList<>(capacity);
