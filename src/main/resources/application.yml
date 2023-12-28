@@ -30,6 +30,11 @@ outboundFlow:
   maxConcurrentConsumers: 20
   maxMessagesPerTask: 10
 
+retry:
+  initialInterval: 3000
+  multiplier: 2.0
+  maxInterval: 20000
+
 logging:
   file:
     name: logs/ilds_agent.log

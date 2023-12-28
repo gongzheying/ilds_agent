@@ -3,6 +3,7 @@ package org.iata.ilds.agent.spring.integration;
 import com.jcraft.jsch.ChannelSftp;
 import lombok.extern.log4j.Log4j2;
 import org.iata.ilds.agent.config.activemq.ActivemqConfigProperties;
+import org.iata.ilds.agent.config.activemq.RetryConfig;
 import org.iata.ilds.agent.domain.builder.EventLogMessageBuilder;
 import org.iata.ilds.agent.domain.builder.QuarantineMessageBuilder;
 import org.iata.ilds.agent.domain.message.DispatchCompletedMessage;
@@ -49,10 +50,10 @@ public class BasicFlowConfig {
     }
 
     @Bean
-    public RetryTemplate retryTemplate() {
+    public RetryTemplate retryTemplate(RetryConfig retryConfig) {
         return RetryTemplate.builder()
                 .maxAttempts(3)
-                .exponentialBackoff(1000, 2.0, 10 * 1000)
+                .exponentialBackoff(retryConfig.initialInterval, retryConfig.multiplier, retryConfig.maxInterval)
                 .build();
     }
 
