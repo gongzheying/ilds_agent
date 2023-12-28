@@ -4,8 +4,6 @@ import org.iata.ilds.agent.domain.message.DispatchCompletedMessage;
 import org.iata.ilds.agent.domain.message.inbound.InboundDispatchMessage;
 import org.iata.ilds.agent.domain.message.outbound.OutboundDispatchMessage;
 
-import java.nio.file.Paths;
-
 public final class DispatchCompletedMessageBuilder {
 
     static final String N_A = "N/A";

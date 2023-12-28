@@ -101,9 +101,7 @@ public class OutboundDispatchConfigTests {
         transferPackages.forEach(this::prepareTransferPackageForTesting);
 
         JmsTemplate jmsTemplate = new JmsTemplate(connectionFactory);
-        dispatchMessages.forEach(dispatchMessage -> {
-            jmsTemplate.convertAndSend(config.getJndi().getQueueOutboundDispatch(), dispatchMessage);
-        });
+        dispatchMessages.forEach(dispatchMessage -> jmsTemplate.convertAndSend(config.getJndi().getQueueOutboundDispatch(), dispatchMessage));
 
         log.info("{} outboundDispatchMessage have been sent", capacity);
 

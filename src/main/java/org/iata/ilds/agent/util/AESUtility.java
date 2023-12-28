@@ -13,6 +13,10 @@ public final class AESUtility {
 
     private static final int IV_LENGTH = 16;
 
+    private AESUtility(){
+        //no op
+    }
+
     public static String decrypt(String sSrc) {
         try {
 
