@@ -175,7 +175,7 @@ public class OutboundDispatchConfig {
                                 } catch (SftpException e) {
                                     throw new MessagingException(String.format("An error occurred while uploading file %s", file.getAbsolutePath()), e);
                                 }
-                                completedMessageBuilder.addFailedDataFile(file.getAbsolutePath());
+                                completedMessageBuilder.addProcessedDataFile(file.getAbsolutePath());
                                 processedCounter.incrementAndGet();
                             });
                             return null; //nothing is useful here
