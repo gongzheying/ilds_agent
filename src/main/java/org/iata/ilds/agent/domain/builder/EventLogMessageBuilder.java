@@ -12,7 +12,6 @@ import org.iata.ilds.agent.domain.message.outbound.OutboundDispatchMessage;
 import org.iata.ilds.agent.util.FileTrackingUtils;
 
 import java.nio.file.Paths;
-import java.time.DateTimeException;
 import java.util.Date;
 
 import static org.iata.ilds.agent.domain.message.eventlog.AbstractEventLogMessage.CallingProcess.INBOUND_DISPATCH;
