@@ -54,6 +54,7 @@ You are disconnected at the moment. Type 'connect' to connect to the server or '
 # Database Setup
 
 1. Running DDL scripts as follows to update the ILDS database
+
 ```mysql
 
 CREATE TABLE `tbl_ilds_transfer_credentials` (
