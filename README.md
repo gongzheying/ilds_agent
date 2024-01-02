@@ -51,7 +51,31 @@ You are disconnected at the moment. Type 'connect' to connect to the server or '
 [standalone@localhost:9990 /] ==/subsystem=messaging-activemq/server=default/connection-factory=RemoteHttpConnectionFactory/:add(connectors=["http-connector"],entries=["java:jboss/exported/jms/RemoteConnectionFactory"],consumer-window-size=0)==
 ```
 
+# Database Setup
 
+1. Running DDL scripts as follows to update the ILDS database
+```mysql
+
+CREATE TABLE `tbl_ilds_transfer_credentials` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT NULL,
+  `last_modified_at` datetime DEFAULT NULL,
+  `version` bigint NOT NULL,
+  `private_key_name` varchar(255) DEFAULT NULL,
+  `private_key_passphrase` varchar(255) DEFAULT NULL,
+  `password` varchar(255) DEFAULT NULL,
+  `title` varchar(255) DEFAULT NULL,
+  `private_key_content` blob,
+  `private_key_content_type` varchar(255) DEFAULT NULL,
+  `type` int DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB;
+
+ALTER TABLE `tbl_ilds_transfer_site` ADD  `new_flag` TINYINT(1) DEFAULT 0;
+
+ALTER TABLE `tbl_ilds_transfer_site` ADD `credential_id` BIGINT;
+
+```
 
 # Application Setup
 
