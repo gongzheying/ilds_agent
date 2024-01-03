@@ -14,6 +14,7 @@ import org.springframework.integration.file.remote.session.SessionFactory;
 import org.springframework.integration.file.remote.session.SessionFactoryLocator;
 import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.util.Map;
 import java.util.Optional;
@@ -60,8 +61,14 @@ public class DBSessionFactoryLocator implements SessionFactoryLocator<ChannelSft
         if (DestinationType.Outbound.equals(transferSite.getDestinationType())) {
              if (outboundFlowConfig.getProxy() != null) {
                  ProxySOCKS5 socks5proxy = new ProxySOCKS5(outboundFlowConfig.getProxy().getHost(), outboundFlowConfig.getProxy().getPort());
-                 socks5proxy.setUserPasswd(outboundFlowConfig.getProxy().getUser(), outboundFlowConfig.getProxy().getPassword());
+                 if (outboundFlowConfig.getProxy().getUser() != null) {
+                     socks5proxy.setUserPasswd(outboundFlowConfig.getProxy().getUser(), outboundFlowConfig.getProxy().getPassword());
+                 }
                  sftpSessionFactory.setProxy(socks5proxy);
+                 log.info("Using the proxy \"{}:{}\" for the TransferSite \"{}\"",
+                         outboundFlowConfig.getProxy().getHost(),
+                         outboundFlowConfig.getProxy().getPort(),
+                         transferSite.getId());
              }
         }
 
