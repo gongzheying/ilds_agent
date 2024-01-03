@@ -25,10 +25,12 @@ spring:
     url: jdbc:mysql://127.0.0.1:3306/ildsdb
     username: root
 
-outboundFlow:
-  concurrentConsumers: 20
-  maxConcurrentConsumers: 20
-  maxMessagesPerTask: 10
+outbound:
+  flow:
+    concurrentConsumers: 20
+    maxConcurrentConsumers: 20
+    maxMessagesPerTask: 10
+
 
 retry:
   initialInterval: 3000

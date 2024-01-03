@@ -4,7 +4,7 @@ import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.SftpException;
 import lombok.extern.log4j.Log4j2;
 import org.iata.ilds.agent.config.activemq.ActivemqConfigProperties;
-import org.iata.ilds.agent.config.activemq.OutboundFlowConfig;
+import org.iata.ilds.agent.config.outbound.OutboundFlowConfig;
 import org.iata.ilds.agent.domain.builder.DispatchCompletedMessageBuilder;
 import org.iata.ilds.agent.domain.entity.FileType;
 import org.iata.ilds.agent.domain.entity.TransferPackage;
@@ -62,16 +62,16 @@ public class OutboundDispatchConfig {
                                                 DispatchCompletedService dispatchCompletedService) {
         log.info("##### Outbound sending param: concurrentConsumers:{}, maxConcurrentConsumers:" +
                         "{}, maxMessagesPerTask:{}",
-                outboundFlowConfig.concurrentConsumers,
-                outboundFlowConfig.maxConcurrentConsumers,
-                outboundFlowConfig.maxMessagesPerTask);
+                outboundFlowConfig.getConcurrentConsumers(),
+                outboundFlowConfig.getMaxConcurrentConsumers(),
+                outboundFlowConfig.getMaxMessagesPerTask());
         return IntegrationFlows.from(
                         Jms.messageDrivenChannelAdapter(connectionFactory).
                                 destination(activemqConfig.getJndi().getQueueOutboundDispatch()).
                                 configureListenerContainer(s -> s.id("outboundPool")
-                                        .concurrentConsumers(outboundFlowConfig.concurrentConsumers)
-                                        .maxConcurrentConsumers(outboundFlowConfig.maxConcurrentConsumers)
-                                        .maxMessagesPerTask(outboundFlowConfig.maxMessagesPerTask))
+                                        .concurrentConsumers(outboundFlowConfig.getConcurrentConsumers())
+                                        .maxConcurrentConsumers(outboundFlowConfig.getMaxConcurrentConsumers())
+                                        .maxMessagesPerTask(outboundFlowConfig.getMaxMessagesPerTask()))
                 )
                 .log(LoggingHandler.Level.INFO, OutboundDispatchConfig.class.getName(), message -> String.format("received jms_messageId=%s", message.getHeaders().get("jms_messageId")))
                 .transform(Transformers.fromJson(OutboundDispatchMessage.class))

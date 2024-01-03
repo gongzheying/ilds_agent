@@ -1,7 +1,10 @@
 package org.iata.ilds.agent.spring.integration;
 
 import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.ProxySOCKS5;
 import lombok.extern.log4j.Log4j2;
+import org.iata.ilds.agent.config.outbound.OutboundFlowConfig;
+import org.iata.ilds.agent.domain.entity.DestinationType;
 import org.iata.ilds.agent.domain.entity.TransferSite;
 import org.iata.ilds.agent.domain.entity.TransferSiteCredentialType;
 import org.iata.ilds.agent.spring.data.TransferSiteRepository;
@@ -23,9 +26,11 @@ public class DBSessionFactoryLocator implements SessionFactoryLocator<ChannelSft
 
     private final Map<Object, DefaultSftpSessionFactory> sessionFactoryMap = new ConcurrentHashMap<>();
     private final TransferSiteRepository transferSiteRepository;
+    private final OutboundFlowConfig outboundFlowConfig;
 
-    public DBSessionFactoryLocator(TransferSiteRepository transferSiteRepository) {
+    public DBSessionFactoryLocator(TransferSiteRepository transferSiteRepository, OutboundFlowConfig outboundFlowConfig) {
         this.transferSiteRepository = transferSiteRepository;
+        this.outboundFlowConfig = outboundFlowConfig;
     }
 
     @Override
@@ -51,6 +56,14 @@ public class DBSessionFactoryLocator implements SessionFactoryLocator<ChannelSft
         sftpSessionFactory.setHost(transferSite.getIp());
         sftpSessionFactory.setPort(transferSite.getPort());
         sftpSessionFactory.setUser(transferSite.getUsername());
+
+        if (DestinationType.Outbound.equals(transferSite.getDestinationType())) {
+             if (outboundFlowConfig.getProxy() != null) {
+                 ProxySOCKS5 socks5proxy = new ProxySOCKS5(outboundFlowConfig.getProxy().getHost(), outboundFlowConfig.getProxy().getPort());
+                 socks5proxy.setUserPasswd(outboundFlowConfig.getProxy().getUser(), outboundFlowConfig.getProxy().getPassword());
+                 sftpSessionFactory.setProxy(socks5proxy);
+             }
+        }
 
         Properties config = new Properties();
         config.put("PubkeyAcceptedAlgorithms", "ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,rsa-sha2-512,rsa-sha2-256");
