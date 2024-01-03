@@ -1,45 +1,9 @@
-
 # JBoss EAP 7.3 Setup
-
 
 1. Add an ***application user*** to jboss, whose role belongs to guest
 
 ```
-$ ~/jboss-eap-7.3/bin/add-user.sh  
-
-What type of user do you wish to add?  
-a) Management User (mgmt-users.properties)  
-b) Application User (application-users.properties)  
-(a): ==b==  
-  
-Enter the details of the new user to add.  
-Using realm 'ApplicationRealm' as discovered from the existing property files.  
-Username : admin  
-User 'admin' already exists and is disabled, would you like to...  
-a) Update the existing user password and roles  
-b) Enable the existing user  
-c) Type a new username  
-(a): ==a==  
-Password recommendations are listed below. To modify these restrictions edit the add-user.properties configuration file.  
-- The password should be different from the username  
-- The password should not be one of the following restricted values {root, admin, administrator}  
-- The password should contain at least 8 characters, 1 alphabetic character(s), 1 digit(s), 1 non-alphanumeric symbol(s)  
-  Password :  
-  WFLYDM0102: Password should have at least 1 non-alphanumeric symbol.  
-  Are you sure you want to use the password entered yes/no? ==yes==    
-  Re-enter Password :  
-  What groups do you want this user to belong to? (Please enter a comma separated list, or leave blank for none)[  ]: ==guest==  
-  Updated user 'admin' to file '~/jboss-eap-7.3/standalone/configuration/application-users.properties'  
-  Updated user 'admin' to file '~/jboss-eap-7.3/domain/configuration/application-users.properties'  
-  Updated user 'admin' with groups guest to file '~/jboss-eap-7.3/standalone/configuration/application-roles.properties'  
-  Updated user 'admin' with groups guest to file '~/jboss-eap-7.3/domain/configuration/application-roles.properties'  
-  Is this new user going to be used for one AS process to connect to another AS process?  
-  e.g. for a slave host controller connecting to the master or for a Remoting connection for server to server EJB calls.  
-  yes/no? ==yes==  
-  To represent the user add the following to the server-identities definition <secret value="YWRtaW4xMjM0" />  
-    
-
-
+$ ~/jboss-eap-7.3/bin/add-user.sh  -a -u 'jmsuser' -p 'password1!' -g 'guest'
 ```
 
 2. Add a connection-factory to the ***standalone configuration file*** as follows
@@ -57,29 +21,31 @@ You are disconnected at the moment. Type 'connect' to connect to the server or '
 
 ```mysql
 
-CREATE TABLE `tbl_ilds_transfer_credentials` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `created_at` datetime DEFAULT NULL,
-  `last_modified_at` datetime DEFAULT NULL,
-  `version` bigint NOT NULL,
-  `private_key_name` varchar(255) DEFAULT NULL,
-  `private_key_passphrase` varchar(255) DEFAULT NULL,
-  `password` varchar(255) DEFAULT NULL,
-  `title` varchar(255) DEFAULT NULL,
-  `private_key_content` blob,
-  `private_key_content_type` varchar(255) DEFAULT NULL,
-  `type` int DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB;
+CREATE TABLE `tbl_ilds_transfer_credentials`
+(
+    `id`                       bigint NOT NULL AUTO_INCREMENT,
+    `created_at`               datetime     DEFAULT NULL,
+    `last_modified_at`         datetime     DEFAULT NULL,
+    `version`                  bigint NOT NULL,
+    `private_key_name`         varchar(255) DEFAULT NULL,
+    `private_key_passphrase`   varchar(255) DEFAULT NULL,
+    `password`                 varchar(255) DEFAULT NULL,
+    `title`                    varchar(255) DEFAULT NULL,
+    `private_key_content`      blob,
+    `private_key_content_type` varchar(255) DEFAULT NULL,
+    `type`                     int          DEFAULT NULL,
+    PRIMARY KEY (`id`)
+) ENGINE = InnoDB;
 
-ALTER TABLE `tbl_ilds_transfer_site` ADD  `new_flag` TINYINT(1) DEFAULT 0;
+ALTER TABLE `tbl_ilds_transfer_site`
+    ADD `new_flag` TINYINT(1) DEFAULT 0;
 
-ALTER TABLE `tbl_ilds_transfer_site` ADD `credential_id` BIGINT;
+ALTER TABLE `tbl_ilds_transfer_site`
+    ADD `credential_id` BIGINT;
 
 ```
 
 # Application Setup
-
 
 ### Activemq Properties
 
@@ -116,11 +82,15 @@ ALTER TABLE `tbl_ilds_transfer_site` ADD `credential_id` BIGINT;
 
 ### Outbound Properties
 
-| Name                                | Description                                | Default Value |
-|-------------------------------------|--------------------------------------------|---------------|
-| outboundFlow.concurrentConsumers    | Concurrent consumers number to use         | 20            |
-| outboundFlow.maxConcurrentConsumers | Max for concurrent consumers number to use | 20            |
-| outboundFlow.maxMessagesPerTask     | Max messages per task                      | 10            |
+| Name                                 | Description                                          | Default Value |
+|--------------------------------------|------------------------------------------------------|---------------|
+| outbound.flow.concurrentConsumers    | Concurrent consumers number to use                   | 20            |
+| outbound.flow.maxConcurrentConsumers | Max for concurrent consumers number to use           | 20            |
+| outbound.flow.maxMessagesPerTask     | Max messages per task                                | 10            |
+| outbound.flow.proxy.host             | the proxie's host name                               |               |
+| outbound.flow.proxy.port             | the proxie's port                                    |               |
+| outbound.flow.proxy.user             | the user name needed for authentication to the proxy |               |
+| outbound.flow.proxy.password         | the password needed for authentication to the proxy  |               |
 
 ### Inbound Properties
 
