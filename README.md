@@ -87,6 +87,7 @@ ALTER TABLE `tbl_ilds_transfer_site`
 | outbound.flow.concurrentConsumers    | Concurrent consumers number to use                   | 20            |
 | outbound.flow.maxConcurrentConsumers | Max for concurrent consumers number to use           | 20            |
 | outbound.flow.maxMessagesPerTask     | Max messages per task                                | 10            |
+| outbound.flow.proxy.type             | the proxie's type, only support HTTP or SOCKS5       |               |
 | outbound.flow.proxy.host             | the proxie's host name                               |               |
 | outbound.flow.proxy.port             | the proxie's port                                    |               |
 | outbound.flow.proxy.user             | the user name needed for authentication to the proxy |               |
