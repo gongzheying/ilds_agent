@@ -1,6 +1,8 @@
 package org.iata.ilds.agent.spring.integration;
 
 import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.Proxy;
+import com.jcraft.jsch.ProxyHTTP;
 import com.jcraft.jsch.ProxySOCKS5;
 import lombok.extern.log4j.Log4j2;
 import org.iata.ilds.agent.config.outbound.OutboundFlowConfig;
@@ -14,7 +16,6 @@ import org.springframework.integration.file.remote.session.SessionFactory;
 import org.springframework.integration.file.remote.session.SessionFactoryLocator;
 import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 
 import java.util.Map;
 import java.util.Optional;
@@ -59,17 +60,18 @@ public class DBSessionFactoryLocator implements SessionFactoryLocator<ChannelSft
         sftpSessionFactory.setUser(transferSite.getUsername());
 
         if (DestinationType.Outbound.equals(transferSite.getDestinationType())) {
-             if (outboundFlowConfig.getProxy() != null) {
-                 ProxySOCKS5 socks5proxy = new ProxySOCKS5(outboundFlowConfig.getProxy().getHost(), outboundFlowConfig.getProxy().getPort());
-                 if (outboundFlowConfig.getProxy().getUser() != null) {
-                     socks5proxy.setUserPasswd(outboundFlowConfig.getProxy().getUser(), outboundFlowConfig.getProxy().getPassword());
-                 }
-                 sftpSessionFactory.setProxy(socks5proxy);
-                 log.info("Using the proxy \"{}:{}\" for the TransferSite \"{}\"",
-                         outboundFlowConfig.getProxy().getHost(),
-                         outboundFlowConfig.getProxy().getPort(),
-                         transferSite.getId());
-             }
+            Proxy proxy = getProxy();
+            if (proxy != null) {
+                sftpSessionFactory.setProxy(proxy);
+                log.info("Using the proxy \"{}://{}:{}\" for site {}@{}:{}:{}",
+                        outboundFlowConfig.getProxy().getType(),
+                        outboundFlowConfig.getProxy().getHost(),
+                        outboundFlowConfig.getProxy().getPort(),
+                        transferSite.getUsername(),
+                        transferSite.getIp(),
+                        transferSite.getPort(),
+                        transferSite.getRemotePath());
+            }
         }
 
         Properties config = new Properties();
@@ -96,5 +98,26 @@ public class DBSessionFactoryLocator implements SessionFactoryLocator<ChannelSft
 
         return sftpSessionFactory;
     }
+
+    private Proxy getProxy() {
+        Proxy proxy = null;
+        if (outboundFlowConfig.getProxy() != null) {
+            switch (outboundFlowConfig.getProxy().getType()) {
+                case SOCKS5 -> {
+                    ProxySOCKS5 socks5proxy = new ProxySOCKS5(outboundFlowConfig.getProxy().getHost(), outboundFlowConfig.getProxy().getPort());
+                    socks5proxy.setUserPasswd(outboundFlowConfig.getProxy().getUser(), outboundFlowConfig.getProxy().getPassword());
+                    proxy = socks5proxy;
+                }
+                case HTTP -> {
+                    ProxyHTTP httpProxy = new ProxyHTTP(outboundFlowConfig.getProxy().getHost(), outboundFlowConfig.getProxy().getPort());
+                    httpProxy.setUserPasswd(outboundFlowConfig.getProxy().getUser(), outboundFlowConfig.getProxy().getPassword());
+                    proxy = httpProxy;
+                }
+
+            }
+        }
+        return proxy;
+    }
+
 
 }

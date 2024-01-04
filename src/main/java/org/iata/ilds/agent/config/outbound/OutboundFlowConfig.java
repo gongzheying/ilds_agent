@@ -16,9 +16,15 @@ public class OutboundFlowConfig {
     private int maxMessagesPerTask = 1;
     private ProxyConfig proxy;
 
+
     @Getter
     @Setter
     public static class ProxyConfig {
+        public enum Type {
+            HTTP, SOCKS5
+        }
+
+        private Type type;
         private String host;
         private int port;
         private String user;
