@@ -16,6 +16,7 @@ import org.springframework.integration.file.remote.session.SessionFactory;
 import org.springframework.integration.file.remote.session.SessionFactoryLocator;
 import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.util.Map;
 import java.util.Optional;
@@ -63,7 +64,7 @@ public class DBSessionFactoryLocator implements SessionFactoryLocator<ChannelSft
             Proxy proxy = getProxy();
             if (proxy != null) {
                 sftpSessionFactory.setProxy(proxy);
-                log.info("Using the proxy \"{}://{}:{}\" for site {}@{}:{}:{}",
+                log.info("Using proxy \"{}://{}:{}\" for site {}@{}:{}:{}",
                         outboundFlowConfig.getProxy().getType(),
                         outboundFlowConfig.getProxy().getHost(),
                         outboundFlowConfig.getProxy().getPort(),
@@ -72,12 +73,17 @@ public class DBSessionFactoryLocator implements SessionFactoryLocator<ChannelSft
                         transferSite.getPort(),
                         transferSite.getRemotePath());
             }
+            Properties jschConfig = getJschConfig();
+            sftpSessionFactory.setSessionConfig(jschConfig);
+            log.info("Using jsch jschConfig \"{}\" for site {}@{}:{}:{}",
+                    jschConfig,
+                    transferSite.getUsername(),
+                    transferSite.getIp(),
+                    transferSite.getPort(),
+                    transferSite.getRemotePath());
+
         }
 
-        Properties config = new Properties();
-        config.put("PubkeyAcceptedAlgorithms", "ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,rsa-sha2-512,rsa-sha2-256");
-        config.put("StrictHostKeyChecking", "no");
-        sftpSessionFactory.setSessionConfig(config);
 
         if (TransferSiteCredentialType.PasswordOnly.equals(transferSite.getCredential().getType())) {
             sftpSessionFactory.setPassword(AESUtility.decrypt(transferSite.getCredential().getPassword()));
@@ -88,7 +94,7 @@ public class DBSessionFactoryLocator implements SessionFactoryLocator<ChannelSft
             sftpSessionFactory.setPrivateKeyPassphrase(AESUtility.decrypt(transferSite.getCredential().getPrivateKeyPassphrase()));
         }
 
-        log.info("Using the credential(id={},type={}) for site {}@{}:{}:{}",
+        log.info("Using credential(id={},type={}) for site {}@{}:{}:{}",
                 transferSite.getCredential().getId(),
                 transferSite.getCredentialType(),
                 transferSite.getUsername(),
@@ -105,12 +111,16 @@ public class DBSessionFactoryLocator implements SessionFactoryLocator<ChannelSft
             switch (outboundFlowConfig.getProxy().getType()) {
                 case SOCKS5 -> {
                     ProxySOCKS5 socks5proxy = new ProxySOCKS5(outboundFlowConfig.getProxy().getHost(), outboundFlowConfig.getProxy().getPort());
-                    socks5proxy.setUserPasswd(outboundFlowConfig.getProxy().getUser(), outboundFlowConfig.getProxy().getPassword());
+                    if (StringUtils.hasText(outboundFlowConfig.getProxy().getUser())) {
+                        socks5proxy.setUserPasswd(outboundFlowConfig.getProxy().getUser(), outboundFlowConfig.getProxy().getPassword());
+                    }
                     proxy = socks5proxy;
                 }
                 case HTTP -> {
                     ProxyHTTP httpProxy = new ProxyHTTP(outboundFlowConfig.getProxy().getHost(), outboundFlowConfig.getProxy().getPort());
-                    httpProxy.setUserPasswd(outboundFlowConfig.getProxy().getUser(), outboundFlowConfig.getProxy().getPassword());
+                    if (StringUtils.hasText(outboundFlowConfig.getProxy().getUser())) {
+                        httpProxy.setUserPasswd(outboundFlowConfig.getProxy().getUser(), outboundFlowConfig.getProxy().getPassword());
+                    }
                     proxy = httpProxy;
                 }
 
@@ -119,5 +129,13 @@ public class DBSessionFactoryLocator implements SessionFactoryLocator<ChannelSft
         return proxy;
     }
 
+    private Properties getJschConfig() {
+        Properties config = new Properties();
+        if (outboundFlowConfig.getJsch() != null && outboundFlowConfig.getJsch().getConfig() != null) {
+            config.putAll(outboundFlowConfig.getJsch().getConfig());
+        }
+        config.put("StrictHostKeyChecking", "no");
+        return config;
+    }
 
 }

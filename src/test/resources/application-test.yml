@@ -37,8 +37,6 @@ logging:
       iata:
         ilds:
           agent: debug
-      springframework:
-        integration:
-          jms: debug
-        jms:
-          core: debug
+    com:
+      jcraft:
+        jsch: debug

@@ -6,6 +6,8 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.Map;
+
 @Configuration
 @ConfigurationProperties("outbound.flow")
 @Getter
@@ -15,6 +17,7 @@ public class OutboundFlowConfig {
     private int maxConcurrentConsumers = 1;
     private int maxMessagesPerTask = 1;
     private ProxyConfig proxy;
+    private JSchConfig jsch;
 
 
     @Getter
@@ -29,6 +32,12 @@ public class OutboundFlowConfig {
         private int port;
         private String user;
         private String password;
+    }
+
+    @Getter
+    @Setter
+    public static class JSchConfig {
+        private Map<String,String> config;
     }
 
 }

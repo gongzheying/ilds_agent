@@ -53,12 +53,12 @@ ALTER TABLE `tbl_ilds_transfer_site`
 |-------------------------------------|-------------------------------------------------------------------------------------|--------------------------------------------------------|
 | activemq.ctx.initialContextFactory  | Fully qualified class name of the factory class that will create an initial context | org.wildfly.naming.client.WildFlyInitialContextFactory |
 | activemq.ctx.provideUrl             | URL string that the service provider to use                                         | http-remoting://127.0.0.1:8080                         |
-| activemq.ctx.securityPrincipal      | Credentials of the principal for authenticating the caller to the service           | admin                                                  |
-| activemq.ctx.securityCredentials    | Identity of the principal for authenticating the caller to the service              | admin1234                                              |
+| activemq.ctx.securityPrincipal      | Credentials of the principal for authenticating the caller to the service           | jmsuser                                                |
+| activemq.ctx.securityCredentials    | Identity of the principal for authenticating the caller to the service              | password1!                                             |
 | activemq.jndi.connectionFactory     | JNDI name that the ConnectionFactory is bound to                                    | jms/RemoteConnectionFactory                            |
 | activemq.jndi.queueEventLog         | JNDI name that the EventLog queue is bound to                                       | queue/ilds/eventLog                                    |
-| activemq.jndi.queueInboundDispatch  | JNDI name that the InboundDispatch queue is bound to                                | queue/ilds/inbound/inboundDispatch                     |
-| activemq.jndi.queueOutboundDispatch | JNDI name that the OutboundDispatch queue is bound to                               | queue/ilds/outbound/outboundDispatch                   |
+| activemq.jndi.queueInboundDispatch  | JNDI name that the InboundDispatch queue is bound to                                | queue/ilds/inbound/inboundDispatchNew                  |
+| activemq.jndi.queueOutboundDispatch | JNDI name that the OutboundDispatch queue is bound to                               | queue/ilds/outbound/outboundDispatchNew                |
 | activemq.jndi.queueQuarantine       | JNDI name that the Quarantine queue is bound to                                     | queue/ilds/quarantine                                  |
 
 ### Data Properties
@@ -92,6 +92,7 @@ ALTER TABLE `tbl_ilds_transfer_site`
 | outbound.flow.proxy.port             | the proxie's port                                    |               |
 | outbound.flow.proxy.user             | the user name needed for authentication to the proxy |               |
 | outbound.flow.proxy.password         | the password needed for authentication to the proxy  |               |
+| outbound.flow.jsch.config            | see also com.jcraft.jsch.JSch.config                 |               |
 
 ### Inbound Properties
 
